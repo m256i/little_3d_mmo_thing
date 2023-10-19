@@ -27,6 +27,6 @@ executable(
   [sources],
   include_directories : [include_path],
   dependencies : [],
-  link_args : ['-lopengl32', '-lglfw3', '-L' + lib_path],
+  link_args : ['-lassimp-vc143-mt', '-lopengl32', '-lglfw3', '-L' + lib_path],
   install : true
 )

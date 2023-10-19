@@ -27,8 +27,8 @@ struct game_window_t
     GLFWmonitor** monitor_pointer = glfwGetMonitors(&monitor_count);
     const GLFWvidmode* vmode      = glfwGetVideoMode(monitor_pointer[0]);
 
-    window_width  = vmode->width / 2;
-    window_height = vmode->height / 2;
+    window_width  = vmode->width;
+    window_height = vmode->height;
 
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     window = glfwCreateWindow(window_width, window_height, _name.data(), nullptr, nullptr);
@@ -48,7 +48,8 @@ struct game_window_t
       return;
     }
 
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     glfwSwapInterval(0);
 
     glEnable(GL_MULTISAMPLE);
@@ -72,9 +73,16 @@ struct game_window_t
     while (!glfwWindowShouldClose(window))
     {
       _game_loop(window);
-      glfwSwapBuffers(window);
       glfwPollEvents();
+      glfwSwapBuffers(window);
     }
+    return *this;
+  }
+
+  game_window_t&
+  init(auto _init_code)
+  {
+    _init_code(window);
     return *this;
   }
 
@@ -89,7 +97,7 @@ private:
   u32 window_width, window_height;
 };
 
-static game_window_t
+inline game_window_t
 create_window(std::string_view _name, bool _fullscreen) noexcept
 {
   std::iostream::sync_with_stdio(false);

@@ -1,0 +1,15 @@
+newmtl mat_gypsywagon
+illum 1
+map_Kd ..\..\..\dwarf\passivedoodads\lanterns\gypsywagon.png
+newmtl mat_gypsydoor_01
+illum 1
+map_Kd ..\..\..\..\azeroth\bootybay\passivedoodad\bootyentrance\gypsydoor_01.png
+newmtl mat_overhangcopy
+illum 1
+map_Kd overhangcopy.png
+newmtl mat_elwynnlantern01
+illum 1
+map_Kd ..\..\..\..\azeroth\bootybay\passivedoodad\bootyentrance\elwynnlantern01.png
+newmtl mat_glow
+illum 1
+map_Kd ..\..\..\nightelf\passivedoodads\magicalimplements\glow.png
