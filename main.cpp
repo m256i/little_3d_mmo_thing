@@ -1,3 +1,7 @@
+#include <cmath>
+#include <deque>
+
+#include <float.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -20,11 +24,14 @@
 constinit f32 lastX = 1920.f / 2.0f;
 constinit f32 lastY = 1080.f / 2.0f;
 
+static constexpr i64 fps_graph_update_rate = 1; // in seconds
+
 static bool in_menu           = false;
 constinit bool adjusted_mouse = false;
 double last_change_time       = 0.0f;
 
 static Camera camera;
+static std::deque<float> fps_tracks{};
 
 bool firstMouse = true;
 float deltaTime = 0.0f;
@@ -61,7 +68,7 @@ process_input(GLFWwindow* window)
 
   if (!in_menu)
   {
-    f32 movement_speed = 2 * deltaTime;
+    f32 movement_speed = 4 * deltaTime;
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.ProcessKeyboard(FORWARD, movement_speed);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.ProcessKeyboard(BACKWARD, movement_speed);
@@ -100,12 +107,10 @@ main() -> i32
             stbi_set_flip_vertically_on_load(true);
 
             // configure global opengl state
-            // -----------------------------
             glEnable(GL_DEPTH_TEST);
 
-            ourShader = Shader("../1.model_loading.vs", "../1.model_loading.fs");
-            ourModel  = Model("../data/duskwoodchapel.obj");
-
+            ourShader   = Shader("../1.model_loading.vs", "../1.model_loading.fs");
+            ourModel    = Model("../data/az_deadmines_c.obj");
             camera.Zoom = 100;
           })
       .loop(
@@ -126,6 +131,21 @@ main() -> i32
 
             glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            if (!((i64)glfwGetTime() % fps_graph_update_rate))
+            {
+              static i64 last_update_time = 0;
+
+              if ((i64)glfwGetTime() != last_update_time)
+              {
+                fps_tracks.push_back(1.f / deltaTime);
+                if (fps_tracks.size() >= 20)
+                {
+                  fps_tracks.pop_front();
+                }
+                last_update_time = (i64)glfwGetTime();
+              }
+            }
 
             // don't forget to enable shader before setting uniforms
             ourShader.use();
@@ -165,6 +185,15 @@ main() -> i32
               {
                 ImGui::Text("fps: %f", 1.f / deltaTime);
 
+                std::vector<float> temp_fps_tracks;
+                temp_fps_tracks.reserve(fps_tracks.size());
+
+                for (const auto ite : fps_tracks)
+                {
+                  temp_fps_tracks.push_back(ite);
+                }
+
+                ImGui::PlotLines("fps graph", temp_fps_tracks.data(), temp_fps_tracks.size(), 0, 0, 10, 5000, ImVec2(250, 100));
                 ImGui::End();
               }
 

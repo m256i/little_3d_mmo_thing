@@ -25,6 +25,7 @@ using u64 = std::uint64_t;
 
 using f32 = float;
 using f64 = double;
+using f65 = long double;
 
 using usize   = std::size_t;
 using uptr    = std::uintptr_t;
