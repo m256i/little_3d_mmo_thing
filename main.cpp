@@ -103,7 +103,7 @@ main() -> i32
             // -----------------------------
             glEnable(GL_DEPTH_TEST);
 
-            ourShader = Shader("1.model_loading.vs", "1.model_loading.fs");
+            ourShader = Shader("../1.model_loading.vs", "../1.model_loading.fs");
             ourModel  = Model("../data/duskwoodchapel.obj");
 
             camera.Zoom = 100;
