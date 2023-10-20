@@ -25,6 +25,7 @@ constinit f32 lastX = 1920.f / 2.0f;
 constinit f32 lastY = 1080.f / 2.0f;
 
 static constexpr i64 fps_graph_update_rate = 1; // in seconds
+static f32 movement_speed                  = 4;
 
 static bool in_menu           = false;
 constinit bool adjusted_mouse = false;
@@ -68,14 +69,13 @@ process_input(GLFWwindow* window)
 
   if (!in_menu)
   {
-    f32 movement_speed = 4 * deltaTime;
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.ProcessKeyboard(FORWARD, movement_speed);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.ProcessKeyboard(BACKWARD, movement_speed);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) camera.ProcessKeyboard(LEFT, movement_speed);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) camera.ProcessKeyboard(RIGHT, movement_speed);
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) camera.ProcessKeyboard(UP, movement_speed);
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) camera.ProcessKeyboard(DOWN, movement_speed);
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.ProcessKeyboard(FORWARD, movement_speed * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.ProcessKeyboard(BACKWARD, movement_speed * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) camera.ProcessKeyboard(LEFT, movement_speed * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) camera.ProcessKeyboard(RIGHT, movement_speed * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) camera.ProcessKeyboard(UP, movement_speed * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) camera.ProcessKeyboard(DOWN, movement_speed * deltaTime);
   }
 }
 
@@ -92,9 +92,8 @@ main() -> i32
             IMGUI_CHECKVERSION();
             ImGui::CreateContext();
             ImGuiIO& io = ImGui::GetIO();
-            (void)io;
+
             io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
-            io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
 
             // Setup Dear ImGui style
             ImGui::StyleColorsDark();
@@ -107,10 +106,10 @@ main() -> i32
             stbi_set_flip_vertically_on_load(true);
 
             // configure global opengl state
-            glEnable(GL_DEPTH_TEST);
+            glEnable(GL_DEPTH_TEST | GL_DEPTH_BUFFER_BIT);
 
             ourShader   = Shader("../1.model_loading.vs", "../1.model_loading.fs");
-            ourModel    = Model("../data/az_deadmines_c.obj");
+            ourModel    = Model("../data/valgarde_70gw.obj");
             camera.Zoom = 100;
           })
       .loop(
@@ -151,7 +150,7 @@ main() -> i32
             ourShader.use();
 
             // view/projection transformations
-            glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)display_w / (float)display_h, 0.1f, 100.0f);
+            glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)display_w / (float)display_h, 0.1f, 1000.0f);
             glm::mat4 view       = camera.GetViewMatrix();
 
             ourShader.setMat4("projection", projection);
@@ -162,6 +161,8 @@ main() -> i32
             model           = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
             model           = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));     // it's a bit too big for our scene, so scale it down
             ourShader.setMat4("model", model);
+            ourShader.setFloat("time", glfwGetTime());
+
             ourModel.Draw(ourShader);
 
             if (!in_menu)
@@ -194,6 +195,7 @@ main() -> i32
                 }
 
                 ImGui::PlotLines("fps graph", temp_fps_tracks.data(), temp_fps_tracks.size(), 0, 0, 10, 5000, ImVec2(250, 100));
+                ImGui::SliderFloat2("movement speed", &movement_speed, 4, 140);
                 ImGui::End();
               }
 
