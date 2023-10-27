@@ -1,7 +1,6 @@
 #include <cmath>
 #include <deque>
 
-#include <float.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -16,41 +15,41 @@
 #include <stb_image.h>
 
 #include "common.h"
+#include "headers/base_engine/renderer/model_renderer.h"
 #include "headers/window.h"
-#include "headers/base_engine/camera.h"
-#include "headers/base_engine/shader.h"
-#include "headers/base_engine/model.h"
+#include "headers/base_engine/renderer/camera.h"
+#include "headers/base_engine/renderer/shader.h"
+#include "headers/base_engine/renderer/model.h"
+#include "headers/base_engine/renderer/static_world_model.h"
+
+#include "headers/base_engine/renderer/game_renderer.h"
+
+#include "headers/base_engine/debug/debug_menu.h"
+#include "headers/logging/easylogging++.h"
 
 constinit f32 lastX = 1920.f / 2.0f;
 constinit f32 lastY = 1080.f / 2.0f;
 
-static constexpr i64 fps_graph_update_rate = 1; // in seconds
-static f32 movement_speed                  = 4;
+static f32 movement_speed = 10;
 
 static bool in_menu           = false;
 constinit bool adjusted_mouse = false;
 double last_change_time       = 0.0f;
 
-static Camera camera;
-static std::deque<float> fps_tracks{};
-
 bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-Shader ourShader{};
-Model ourModel{};
+game_renderer_t game_renderer{};
 
 auto
 mouse_callback([[maybe_unused]] GLFWwindow* window, double xpos_, double ypos_) -> u0
 {
   if (!in_menu)
   {
-    camera.ProcessMouseMovement(-(lastX - xpos_), lastY - ypos_);
+    game_renderer.game_camera.process_mouse_movement(-(lastX - xpos_), lastY - ypos_);
     lastX = (f32)xpos_;
     lastY = (f32)ypos_;
-
-    printf("x: %f y: %f\n", lastX, lastY);
   }
 }
 
@@ -69,54 +68,40 @@ process_input(GLFWwindow* window)
 
   if (!in_menu)
   {
-
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.ProcessKeyboard(FORWARD, movement_speed * deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.ProcessKeyboard(BACKWARD, movement_speed * deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) camera.ProcessKeyboard(LEFT, movement_speed * deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) camera.ProcessKeyboard(RIGHT, movement_speed * deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) camera.ProcessKeyboard(UP, movement_speed * deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) camera.ProcessKeyboard(DOWN, movement_speed * deltaTime);
+    using mt = render_camera_t::e_movement_types;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) game_renderer.game_camera.process_keyboard_input(mt::forward, movement_speed * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) game_renderer.game_camera.process_keyboard_input(mt::backward, movement_speed * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) game_renderer.game_camera.process_keyboard_input(mt::left, movement_speed * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) game_renderer.game_camera.process_keyboard_input(mt::right, movement_speed * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) game_renderer.game_camera.process_keyboard_input(mt::up, movement_speed * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) game_renderer.game_camera.process_keyboard_input(mt::down, movement_speed * deltaTime);
   }
 }
 
+INITIALIZE_EASYLOGGINGPP
+
 auto
-main() -> i32
+main(i32 argc, char** argv) -> i32
 {
-  std::cout << "hello!\n";
+  START_EASYLOGGINGPP(argc, argv);
+
+  debug_menu_t debug_menu{};
+
   return create_window("WoW Clone :D", false)
       .register_callback(glfwSetCursorPosCallback, mouse_callback)
       .init(
-          [](GLFWwindow* _window)
+          [&](GLFWwindow* _window)
           {
-            // main loop etc
-            IMGUI_CHECKVERSION();
-            ImGui::CreateContext();
-            ImGuiIO& io = ImGui::GetIO();
+            debug_menu.init_menu(_window);
 
-            io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
-
-            // Setup Dear ImGui style
-            ImGui::StyleColorsDark();
-
-            // Setup Platform/Renderer backends
-            ImGui_ImplGlfw_InitForOpenGL(_window, true);
-            ImGui_ImplOpenGL3_Init("#version 330");
-
-            // tell stb_image.h to flip loaded texture's on the y-axis (before loading model).
-            stbi_set_flip_vertically_on_load(true);
-
-            // configure global opengl state
-            glEnable(GL_DEPTH_TEST | GL_DEPTH_BUFFER_BIT);
-
-            ourShader   = Shader("../1.model_loading.vs", "../1.model_loading.fs");
-            ourModel    = Model("../data/valgarde_70gw.obj");
-            camera.Zoom = 100;
+            game_renderer.update_frame_buffer(_window);
+            game_renderer.model_renderer.add_model("dungeon", "../data/valgarde_70gw.obj");
           })
       .loop(
-          [](GLFWwindow* _window)
+          [&](GLFWwindow* _window)
           {
-            // Our state
-            bool show_demo_window = true;
+            glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             process_input(_window);
 
@@ -124,88 +109,10 @@ main() -> i32
             deltaTime          = currentFrame - lastFrame;
             lastFrame          = currentFrame;
 
-            // Rendering
-            int display_w, display_h;
-            glfwGetFramebufferSize(_window, &display_w, &display_h);
+            game_renderer.render();
 
-            glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            if (!((i64)glfwGetTime() % fps_graph_update_rate))
-            {
-              static i64 last_update_time = 0;
-
-              if ((i64)glfwGetTime() != last_update_time)
-              {
-                fps_tracks.push_back(1.f / deltaTime);
-                if (fps_tracks.size() >= 20)
-                {
-                  fps_tracks.pop_front();
-                }
-                last_update_time = (i64)glfwGetTime();
-              }
-            }
-
-            // don't forget to enable shader before setting uniforms
-            ourShader.use();
-
-            // view/projection transformations
-            glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)display_w / (float)display_h, 0.1f, 1000.0f);
-            glm::mat4 view       = camera.GetViewMatrix();
-
-            ourShader.setMat4("projection", projection);
-            ourShader.setMat4("view", view);
-
-            // render the loaded model
-            glm::mat4 model = glm::mat4(1.0f);
-            model           = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
-            model           = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));     // it's a bit too big for our scene, so scale it down
-            ourShader.setMat4("model", model);
-            ourShader.setFloat("time", glfwGetTime());
-
-            ourModel.Draw(ourShader);
-
-            if (!in_menu)
-            {
-              glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-            }
-            if (in_menu)
-            {
-              glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-            }
-
-            if (in_menu)
-            {
-              // Start the Dear ImGui frame
-              ImGui_ImplOpenGL3_NewFrame();
-              ImGui_ImplGlfw_NewFrame();
-              ImGui::NewFrame();
-              ImGui::ShowDemoWindow(&show_demo_window);
-              bool open = true;
-              if (ImGui::Begin("perf stats", &open))
-              {
-                ImGui::Text("fps: %f", 1.f / deltaTime);
-
-                std::vector<float> temp_fps_tracks;
-                temp_fps_tracks.reserve(fps_tracks.size());
-
-                for (const auto ite : fps_tracks)
-                {
-                  temp_fps_tracks.push_back(ite);
-                }
-
-                ImGui::PlotLines("fps graph", temp_fps_tracks.data(), temp_fps_tracks.size(), 0, 0, 10, 5000, ImVec2(250, 100));
-                ImGui::SliderFloat2("movement speed", &movement_speed, 4, 140);
-                ImGui::End();
-              }
-
-              ImGui::Render();
-            }
-
-            if (in_menu)
-            {
-              ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-            }
+            debug_menu.print_stdcout();
+            debug_menu.draw(_window, in_menu, deltaTime);
 
             // hello please dont format weirdly
           })

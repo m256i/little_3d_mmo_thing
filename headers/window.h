@@ -56,6 +56,8 @@ struct game_window_t
     glfwDefaultWindowHints();
     glfwSetWindowPos(window, 0, 0);
     glfwShowWindow(window);
+
+    glEnable(GL_DEPTH_TEST | GL_DEPTH_BUFFER_BIT);
   }
 
   ~game_window_t() { glfwDestroyWindow(window); }
