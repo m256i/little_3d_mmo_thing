@@ -20,7 +20,7 @@ struct render_camera_t
 
   constexpr static float default_yaw         = -90.0f;
   constexpr static float default_pitch       = 0.0f;
-  constexpr static float default_speed       = 2.5f;
+  constexpr static float default_speed       = 15.5f;
   constexpr static float default_sensitivity = 0.1f;
   constexpr static float default_fov         = 90.0f;
 
@@ -41,7 +41,7 @@ struct render_camera_t
   }
 
   glm::mat4
-  get_view_matrix()
+  get_view_matrix() const
   {
     return glm::lookAt(vec_position, vec_position + vec_front, vec_up);
   }
@@ -59,7 +59,7 @@ struct render_camera_t
   }
 
   void
-  process_mouse_movement(float xoffset, float yoffset, GLboolean constrainpitch = true)
+  process_mouse_movement(float xoffset, float yoffset, bool constrainpitch = true)
   {
     xoffset *= mouse_sense;
     yoffset *= mouse_sense;

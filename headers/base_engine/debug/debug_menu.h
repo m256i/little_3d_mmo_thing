@@ -124,10 +124,10 @@ struct debug_menu_t
 
           ImGui::PlotLines("fps graph", temp_fps_tracks.data(), temp_fps_tracks.size(), 0, 0, 10, 5000, ImVec2(250, 100));
         }
-        ImGui::End();
       }
+      ImGui::End();
 
-      if (ImGui::Begin("console", nullptr, ImGuiWindowFlags_NoResize))
+      if (ImGui::Begin("console", nullptr))
       {
         if (ImGui::InputText(" ", console_input_buff.data(), console_input_buff.size()))
         {
@@ -140,9 +140,8 @@ struct debug_menu_t
           std::fill(console_input_buff.begin(), console_input_buff.end(), '\0');
         }
         ImGui::Text("%s", console_buffer.view().data());
-        ImGui::End();
       }
-
+      ImGui::End();
       ImGui::Render();
     }
 

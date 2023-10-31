@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "assimp/aabb.h"
 #include "shader.h"
 
 #include <string_view>
@@ -45,14 +46,16 @@ struct mesh_t
   std::vector<vertex_t> vertices;
   std::vector<u32> indices;
   std::vector<texture_t> textures;
+  aiAABB bbox;
   u32 VAO;
 
   // constructor
-  mesh_t(std::vector<vertex_t> vertices, std::vector<u32> indices, std::vector<texture_t> textures)
+  mesh_t(std::vector<vertex_t> vertices, std::vector<u32> indices, std::vector<texture_t> textures, const aiAABB &_bbox)
   {
     this->vertices = vertices;
     this->indices  = indices;
     this->textures = textures;
+    bbox           = _bbox;
 
     // now that we have all the required data, set the vertex buffers and its attribute pointers.
     bind_mesh_data();

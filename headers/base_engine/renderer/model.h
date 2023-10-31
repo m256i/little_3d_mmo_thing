@@ -111,7 +111,8 @@ public:
   {
     // read file via ASSIMP
     Assimp::Importer importer;
-    const aiScene *scene = importer.ReadFile(path.data(), aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+    const aiScene *scene = importer.ReadFile(path.data(), aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | aiProcess_OptimizeMeshes |
+                                                              aiProcess_OptimizeGraph | aiProcess_GenBoundingBoxes);
     // check for errors
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) // if is Not Zero
     {
@@ -148,10 +149,12 @@ private:
   mesh_t
   process_mesh(aiMesh *mesh, const aiScene *scene)
   {
-    // data to fill :DDDD
+    // data to fill
     std::vector<mesh_t::vertex_t> vertices;
     std::vector<unsigned int> indices;
     std::vector<mesh_t::texture_t> textures;
+
+    aiAABB bbox = mesh->mAABB;
 
     // walk through each of the mesh's vertices
     for (usize i = 0; i < mesh->mNumVertices; i++)
@@ -232,7 +235,7 @@ private:
     textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
 
     // return a mesh object created from the extracted mesh data
-    return mesh_t(vertices, indices, textures);
+    return mesh_t(vertices, indices, textures, bbox);
   }
 
   // checks all material textures of a given type and loads the textures if they're not loaded yet.

@@ -13,18 +13,26 @@
 #include <imgui/imgui.h>
 
 #include <stb_image.h>
+#include <unordered_map>
+#include <utility>
 
+#include "assimp/aabb.h"
+#include "assimp/vector3.h"
 #include "common.h"
 #include "headers/base_engine/renderer/model_renderer.h"
 #include "headers/window.h"
-#include "headers/base_engine/renderer/camera.h"
+
+#include "headers/base_engine/physics_system/bbox.h"
 #include "headers/base_engine/renderer/shader.h"
-#include "headers/base_engine/renderer/model.h"
-#include "headers/base_engine/renderer/static_world_model.h"
 
 #include "headers/base_engine/renderer/game_renderer.h"
+#include "headers/base_engine/physics_system/mesh_collider.h"
 
 #include "headers/base_engine/debug/debug_menu.h"
+#include "headers/base_engine/debug/debug_overlay.h"
+
+#define ELPP_DEFAULT_LOG_FILE "wow_clone"
+
 #include "headers/logging/easylogging++.h"
 
 constinit f32 lastX = 1920.f / 2.0f;
@@ -78,6 +86,12 @@ process_input(GLFWwindow* window)
   }
 }
 
+/* TODO:
+remove stupi monad thing
+input system
+
+*/
+
 INITIALIZE_EASYLOGGINGPP
 
 auto
@@ -85,7 +99,10 @@ main(i32 argc, char** argv) -> i32
 {
   START_EASYLOGGINGPP(argc, argv);
 
+  std::unordered_map<u32, debug_bbox_t> debug_boxes{};
   debug_menu_t debug_menu{};
+  partial_spacial_tree_t tree{};
+  debug_overlay_t doverlay{};
 
   return create_window("WoW Clone :D", false)
       .register_callback(glfwSetCursorPosCallback, mouse_callback)
@@ -93,9 +110,12 @@ main(i32 argc, char** argv) -> i32
           [&](GLFWwindow* _window)
           {
             debug_menu.init_menu(_window);
+            doverlay.init(_window, game_renderer.game_camera);
 
             game_renderer.update_frame_buffer(_window);
             game_renderer.model_renderer.add_model("dungeon", "../data/valgarde_70gw.obj");
+
+            glEnable(GL_BLEND);
           })
       .loop(
           [&](GLFWwindow* _window)
@@ -111,10 +131,24 @@ main(i32 argc, char** argv) -> i32
 
             game_renderer.render();
 
+            for (auto& model : game_renderer.model_renderer.static_world_models)
+            {
+              static constexpr auto toVec3 = [](const aiVector3D& _vec) { return glm::vec3{_vec.x, _vec.y, _vec.z}; };
+
+              for (auto& mesh : model.second.draw_model.meshes)
+              {
+                doverlay.draw_AABB(toVec3(mesh.bbox.mMin), toVec3(mesh.bbox.mMax), 0x0ff4f0ff, true);
+              }
+
+              static auto bla = tree.generate(model.second.draw_model.meshes);
+              for (const auto& blabal : bla)
+              {
+                doverlay.draw_AABB(blabal.min, blabal.max, (u32)rand() | 0xff0000ff, true);
+              }
+            }
+
             debug_menu.print_stdcout();
             debug_menu.draw(_window, in_menu, deltaTime);
-
-            // hello please dont format weirdly
           })
       .stdexit();
 }

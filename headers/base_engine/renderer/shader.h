@@ -1,6 +1,5 @@
 #pragma once
 
-#include <glad/glad.h>
 #include <glm/glm.hpp>
 
 #include <string>
@@ -11,6 +10,8 @@
 
 #include "../../logging/easylogging++.h"
 #include "../../../common.h"
+
+#include <glad/glad.h>
 
 struct basic_shader_t
 {
