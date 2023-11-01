@@ -8,10 +8,9 @@ in float camera_distance;
 
 uniform sampler2D texture_diffuse1;
 
-const float FOG_DISTANCE = 150;
+const float FOG_DISTANCE = 300;
 const float FOG_FACTOR   = 2;
-// TODO: remove this: this should be related to the skybox color (take the average or something) or maybe add a fog color var to a scene
-const vec4 FOG_COLOR = vec4(0.3, 0.05, 0.02, 1);
+const vec4 FOG_COLOR     = vec4(96.f / 255.f, 145.f / 255.f, 152.f / 255.f, 1);
 
 void
 main()

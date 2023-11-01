@@ -8,7 +8,7 @@ SortIncludes: 'false'
 BreakBeforeBraces: Allman
 BreakBeforeTernaryOperators: 'false'
 BreakStringLiterals: 'false'
-ColumnLimit: '190'
+ColumnLimit: '120'
 DerivePointerAlignment: 'true'
 ExperimentalAutoDetectBinPacking: 'false'
 FixNamespaceComments: 'true'

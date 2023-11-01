@@ -16,9 +16,55 @@ TODO:
   - make octree with AABBs then do collision based on direct vertices
 */
 
+// fuck fucking msvc bro holy shit
+#undef min(x, y)
+#undef max(x, y)
+
 struct aabb_t
 {
-  glm::vec3 min, max;
+  glm::vec3 min{}, max{};
+
+  aabb_t() = default;
+
+  aabb_t(const glm::vec3& _min, const glm::vec3& _max) : min(_min), max(_max) {}
+  aabb_t(glm::vec3&& _min, glm::vec3&& _max) : min(std::move(_min)), max(std::move(_max)) {}
+
+  aabb_t(const aiAABB& vec)
+  {
+    min.x = vec.mMin.x;
+    min.y = vec.mMin.y;
+    min.z = vec.mMin.z;
+    max.x = vec.mMax.x;
+    max.y = vec.mMax.y;
+    max.z = vec.mMax.z;
+  }
+
+  aabb_t(const aabb_t& _other) : min(_other.min), max(_other.max) {}
+  aabb_t(aabb_t&& _other) : min(std::move(_other.min)), max(std::move(_other.max)) {}
+
+  aabb_t(aiAABB&& vec)
+  {
+    min.x = std::move(vec.mMin.x);
+    min.y = std::move(vec.mMin.y);
+    min.z = std::move(vec.mMin.z);
+    max.x = std::move(vec.mMax.x);
+    max.y = std::move(vec.mMax.y);
+    max.z = std::move(vec.mMax.z);
+  }
+
+  decltype(auto)
+  operator=(const aabb_t& vec)
+  {
+    min = vec.min;
+    max = vec.max;
+  }
+
+  decltype(auto)
+  operator=(aabb_t&& vec)
+  {
+    min = std::move(vec.min);
+    max = std::move(vec.max);
+  }
 
   void
   operator=(const aiAABB& vec)
@@ -80,15 +126,15 @@ struct debug_bbox_t
   };
 
   std::array<vert_t, 8> vertices{
-      glm::vec3{-1, -1, 1}, // 0 bottom left
-      glm::vec3{1, -1, 1},  // 1
-      glm::vec3{-1, 1, 1},  // 2
-      glm::vec3{1, 1, 1},   // 3
+      vert_t{glm::vec3{-1, -1, 1}}, // 0 bottom left
+      vert_t{glm::vec3{1, -1, 1}},  // 1
+      vert_t{glm::vec3{-1, 1, 1}},  // 2
+      vert_t{glm::vec3{1, 1, 1}},   // 3
 
-      glm::vec3{-1, -1, -1}, // 4
-      glm::vec3{1, -1, -1},  // 5
-      glm::vec3{-1, 1, -1},  // 6
-      glm::vec3{1, 1, -1}    // 7 top right
+      vert_t{glm::vec3{-1, -1, -1}}, // 4
+      vert_t{glm::vec3{1, -1, -1}},  // 5
+      vert_t{glm::vec3{-1, 1, -1}},  // 6
+      vert_t{glm::vec3{1, 1, -1}}    // 7 top right
   };
 
   std::array<u32, 36> indices = {
@@ -104,8 +150,10 @@ struct debug_bbox_t
   void
   load_from_mesh(const aiAABB& _bbox)
   {
-    glm::vec3 scalingFactors = glm::vec3{_bbox.mMax.x - _bbox.mMin.x, _bbox.mMax.y - _bbox.mMin.y, _bbox.mMax.z - _bbox.mMin.z} / 2.0f;
-    glm::vec3 center         = glm::vec3{(_bbox.mMax.x + _bbox.mMin.x) / 2.f, (_bbox.mMax.y + _bbox.mMin.y) / 2.f, (_bbox.mMax.z + _bbox.mMin.z) / 2.f};
+    glm::vec3 scalingFactors =
+        glm::vec3{_bbox.mMax.x - _bbox.mMin.x, _bbox.mMax.y - _bbox.mMin.y, _bbox.mMax.z - _bbox.mMin.z} / 2.0f;
+    glm::vec3 center = glm::vec3{(_bbox.mMax.x + _bbox.mMin.x) / 2.f, (_bbox.mMax.y + _bbox.mMin.y) / 2.f,
+                                 (_bbox.mMax.z + _bbox.mMin.z) / 2.f};
 
     for (int i = 0; i < 8; i++)
     {

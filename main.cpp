@@ -15,6 +15,7 @@
 #include <stb_image.h>
 #include <unordered_map>
 #include <utility>
+#include "common.h"
 
 #include "assimp/aabb.h"
 #include "assimp/vector3.h"
@@ -30,8 +31,6 @@
 
 #include "headers/base_engine/debug/debug_menu.h"
 #include "headers/base_engine/debug/debug_overlay.h"
-
-#define ELPP_DEFAULT_LOG_FILE "wow_clone"
 
 #include "headers/logging/easylogging++.h"
 
@@ -77,12 +76,18 @@ process_input(GLFWwindow* window)
   if (!in_menu)
   {
     using mt = render_camera_t::e_movement_types;
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) game_renderer.game_camera.process_keyboard_input(mt::forward, movement_speed * deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) game_renderer.game_camera.process_keyboard_input(mt::backward, movement_speed * deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) game_renderer.game_camera.process_keyboard_input(mt::left, movement_speed * deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) game_renderer.game_camera.process_keyboard_input(mt::right, movement_speed * deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) game_renderer.game_camera.process_keyboard_input(mt::up, movement_speed * deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) game_renderer.game_camera.process_keyboard_input(mt::down, movement_speed * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+      game_renderer.game_camera.process_keyboard_input(mt::forward, movement_speed * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+      game_renderer.game_camera.process_keyboard_input(mt::backward, movement_speed * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+      game_renderer.game_camera.process_keyboard_input(mt::left, movement_speed * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+      game_renderer.game_camera.process_keyboard_input(mt::right, movement_speed * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+      game_renderer.game_camera.process_keyboard_input(mt::up, movement_speed * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+      game_renderer.game_camera.process_keyboard_input(mt::down, movement_speed * deltaTime);
   }
 }
 
@@ -91,6 +96,37 @@ remove stupi monad thing
 input system
 
 */
+
+void
+draw_tree_recursive(const tree_node_t& branch, std::string recursion_string)
+{
+  // printf("%sdrawing index: %llu\n", recursion_string.c_str(), failsafe);
+
+  debug_overlay_t::draw_AABB(branch.bbox.min, branch.bbox.max, 0xff04f0ff, true);
+
+  for (const auto& mesh : branch.meshes)
+  {
+    for (usize i = 0; i < mesh.vertices.size() - 1; i += 2)
+    {
+      std::array<glm::vec3, 2> vert;
+      vert[0] = mesh.vertices[i].position;
+      vert[1] = mesh.vertices[i + 1].position;
+      debug_overlay_t::draw_line(vert, 0x01fff0ff, true);
+    }
+  }
+
+  usize j = 0;
+  for (const auto ite : branch.children)
+  {
+
+    if (ite != nullptr)
+    {
+      // printf("%scube: %llu\n", recursion_string.c_str(), j);
+      draw_tree_recursive(*ite, recursion_string + "|  ");
+    }
+    ++j;
+  }
+}
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -102,7 +138,6 @@ main(i32 argc, char** argv) -> i32
   std::unordered_map<u32, debug_bbox_t> debug_boxes{};
   debug_menu_t debug_menu{};
   partial_spacial_tree_t tree{};
-  debug_overlay_t doverlay{};
 
   return create_window("WoW Clone :D", false)
       .register_callback(glfwSetCursorPosCallback, mouse_callback)
@@ -110,17 +145,15 @@ main(i32 argc, char** argv) -> i32
           [&](GLFWwindow* _window)
           {
             debug_menu.init_menu(_window);
-            doverlay.init(_window, game_renderer.game_camera);
+            debug_overlay_t::init(_window, game_renderer.game_camera);
 
             game_renderer.update_frame_buffer(_window);
-            game_renderer.model_renderer.add_model("dungeon", "../data/valgarde_70gw.obj");
-
-            glEnable(GL_BLEND);
+            game_renderer.model_renderer.add_model("dungeon", "../data/duskwoodchapel.obj");
           })
       .loop(
           [&](GLFWwindow* _window)
           {
-            glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
+            glClearColor(0.f, 0.f, 0.f, 1.f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             process_input(_window);
@@ -137,17 +170,16 @@ main(i32 argc, char** argv) -> i32
 
               for (auto& mesh : model.second.draw_model.meshes)
               {
-                doverlay.draw_AABB(toVec3(mesh.bbox.mMin), toVec3(mesh.bbox.mMax), 0x0ff4f0ff, true);
+                //   debug_overlay_t::draw_AABB(toVec3(mesh.bbox.mMin), toVec3(mesh.bbox.mMax), 0x0ff4f0ff, true);
               }
 
               static auto bla = tree.generate(model.second.draw_model.meshes);
-              for (const auto& blabal : bla)
-              {
-                doverlay.draw_AABB(blabal.min, blabal.max, (u32)rand() | 0xff0000ff, true);
-              }
+
+              draw_tree_recursive(tree.root, " ");
             }
 
             debug_menu.print_stdcout();
+
             debug_menu.draw(_window, in_menu, deltaTime);
           })
       .stdexit();

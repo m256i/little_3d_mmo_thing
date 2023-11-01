@@ -31,6 +31,7 @@ struct game_window_t
     window_height = vmode->height;
 
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_SAMPLES, 4);
     window = glfwCreateWindow(window_width, window_height, _name.data(), nullptr, nullptr);
 
     if (!window) [[unlikely]]
@@ -58,6 +59,8 @@ struct game_window_t
     glfwShowWindow(window);
 
     glEnable(GL_DEPTH_TEST | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_MULTISAMPLE);
+    glEnable(GL_BLEND);
   }
 
   ~game_window_t() { glfwDestroyWindow(window); }
