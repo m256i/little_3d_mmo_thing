@@ -16,6 +16,11 @@
 #include "headers/base_engine/renderer/mesh.h"
 #include "../debug/debug_overlay.h"
 
+/*
+TODO: generate convex hull for every mesh and put that into the octree
+split mesh into faces with normals for collision checking
+*/
+
 struct collision_mesh_t
 {
   std::vector<mesh_t::vertex_t> vertices{};
@@ -131,13 +136,13 @@ recursive_subdivide(tree_node_t& _current_node, const std::vector<mesh_t>& _mesh
     {
       meshes_inside.push_back(pmesh);
     }
-    else if (bbox_overlaps_bbox(_current_node.bbox, aabb_t(mesh.bbox)))
-    {
-      if (point_inside_bbox(_current_node.bbox, bbox_bbox_collision_center(_current_node.bbox, aabb_t(mesh.bbox))))
-      {
-        meshes_inside.push_back(pmesh);
-      }
-    }
+    // else if (bbox_overlaps_bbox(_current_node.bbox, aabb_t(mesh.bbox)))
+    //{
+    //   if (point_inside_bbox(_current_node.bbox, bbox_bbox_collision_center(_current_node.bbox, aabb_t(mesh.bbox))))
+    //   {
+    //     meshes_inside.push_back(pmesh);
+    //   }
+    // }
   }
 
   for (const auto& ite : meshes_inside)
@@ -175,7 +180,7 @@ recursive_subdivide(tree_node_t& _current_node, const std::vector<mesh_t>& _mesh
   printf("%sfound %llu unique meshes inside current box!\n", _recursion_string.c_str(), meshes_inside.size());
 
   // we want exactly 2 or less e unique meshes per cube
-  if (unique_counter <= 2)
+  if (unique_counter == 1)
   {
     printf("%sfound 3 or less meshes inside current box, returning!\n", _recursion_string.c_str());
     for (const auto& ite : meshes_inside)

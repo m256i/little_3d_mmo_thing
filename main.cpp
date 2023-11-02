@@ -104,27 +104,23 @@ draw_tree_recursive(const tree_node_t& branch, std::string recursion_string)
 
   debug_overlay_t::draw_AABB(branch.bbox.min, branch.bbox.max, 0xff04f0ff, true);
 
-  for (const auto& mesh : branch.meshes)
-  {
-    for (usize i = 0; i < mesh.vertices.size() - 1; i += 2)
-    {
-      std::array<glm::vec3, 2> vert;
-      vert[0] = mesh.vertices[i].position;
-      vert[1] = mesh.vertices[i + 1].position;
-      debug_overlay_t::draw_line(vert, 0x01fff0ff, true);
-    }
-  }
+  // for (const auto& mesh : branch.meshes)
+  //{
+  //   for (usize i = 0; i < mesh.vertices.size() - 1; i += 2)
+  //   {
+  //     std::array<glm::vec3, 2> vert;
+  //     vert[0] = mesh.vertices[i].position;
+  //     vert[1] = mesh.vertices[i + 1].position;
+  //     // debug_overlay_t::draw_line(vert, 0x01fff0ff, true);
+  //   }
+  // }
 
-  usize j = 0;
-  for (const auto ite : branch.children)
+  for (const auto& ite : branch.children)
   {
-
     if (ite != nullptr)
     {
-      // printf("%scube: %llu\n", recursion_string.c_str(), j);
       draw_tree_recursive(*ite, recursion_string + "|  ");
     }
-    ++j;
   }
 }
 
@@ -148,7 +144,7 @@ main(i32 argc, char** argv) -> i32
             debug_overlay_t::init(_window, game_renderer.game_camera);
 
             game_renderer.update_frame_buffer(_window);
-            game_renderer.model_renderer.add_model("dungeon", "../data/duskwoodchapel.obj");
+            game_renderer.model_renderer.add_model("dungeon", "../data/az_deadmines_c.obj");
           })
       .loop(
           [&](GLFWwindow* _window)
@@ -170,11 +166,10 @@ main(i32 argc, char** argv) -> i32
 
               for (auto& mesh : model.second.draw_model.meshes)
               {
-                //   debug_overlay_t::draw_AABB(toVec3(mesh.bbox.mMin), toVec3(mesh.bbox.mMax), 0x0ff4f0ff, true);
+                debug_overlay_t::draw_AABB(toVec3(mesh.bbox.mMin), toVec3(mesh.bbox.mMax), 0x0ff4f0ff, true);
               }
 
               static auto bla = tree.generate(model.second.draw_model.meshes);
-
               draw_tree_recursive(tree.root, " ");
             }
 
