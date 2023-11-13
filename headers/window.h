@@ -30,6 +30,7 @@ struct game_window_t
     window_width  = vmode->width;
     window_height = vmode->height;
 
+    glfwDefaultWindowHints();
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_SAMPLES, 4);
     window = glfwCreateWindow(window_width, window_height, _name.data(), nullptr, nullptr);
@@ -54,7 +55,7 @@ struct game_window_t
     glfwSwapInterval(0);
 
     glEnable(GL_MULTISAMPLE);
-    glfwDefaultWindowHints();
+
     glfwSetWindowPos(window, 0, 0);
     glfwShowWindow(window);
 

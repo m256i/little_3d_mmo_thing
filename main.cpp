@@ -1,5 +1,8 @@
 #include <cmath>
 #include <deque>
+#include <float.h>
+#include <limits>
+#include <numeric>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -20,6 +23,8 @@
 #include "assimp/aabb.h"
 #include "assimp/vector3.h"
 #include "common.h"
+#include "glm/geometric.hpp"
+#include "glm/matrix.hpp"
 #include "headers/base_engine/renderer/model_renderer.h"
 #include "headers/window.h"
 
@@ -33,6 +38,8 @@
 #include "headers/base_engine/debug/debug_overlay.h"
 
 #include "headers/logging/easylogging++.h"
+
+#include <quickhull/QuickHull.hpp>
 
 constinit f32 lastX = 1920.f / 2.0f;
 constinit f32 lastY = 1080.f / 2.0f;
@@ -94,7 +101,6 @@ process_input(GLFWwindow* window)
 /* TODO:
 remove stupi monad thing
 input system
-
 */
 
 void
@@ -102,7 +108,7 @@ draw_tree_recursive(const tree_node_t& branch, std::string recursion_string)
 {
   // printf("%sdrawing index: %llu\n", recursion_string.c_str(), failsafe);
 
-  debug_overlay_t::draw_AABB(branch.bbox.min, branch.bbox.max, 0xff04f0ff, true);
+  // debug_overlay_t::draw_AABB(branch.bbox.min, branch.bbox.max, 0xff04f0ff, true);
 
   // for (const auto& mesh : branch.meshes)
   //{
@@ -144,37 +150,33 @@ main(i32 argc, char** argv) -> i32
             debug_overlay_t::init(_window, game_renderer.game_camera);
 
             game_renderer.update_frame_buffer(_window);
-            game_renderer.model_renderer.add_model("dungeon", "../data/az_deadmines_c.obj");
+            game_renderer.model_renderer.add_model("dungeon", "../data/valgarde_70gw.obj");
           })
       .loop(
           [&](GLFWwindow* _window)
           {
-            glClearColor(0.f, 0.f, 0.f, 1.f);
+            glClearColor(0.3f, 0.1f, 0.8f, 1.f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             process_input(_window);
 
-            float currentFrame = (float)glfwGetTime();
-            deltaTime          = currentFrame - lastFrame;
-            lastFrame          = currentFrame;
+            f32 currentFrame = (f32)glfwGetTime();
+            deltaTime        = currentFrame - lastFrame;
+            lastFrame        = currentFrame;
+
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
             game_renderer.render();
 
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
             for (auto& model : game_renderer.model_renderer.static_world_models)
             {
-              static constexpr auto toVec3 = [](const aiVector3D& _vec) { return glm::vec3{_vec.x, _vec.y, _vec.z}; };
-
-              for (auto& mesh : model.second.draw_model.meshes)
-              {
-                debug_overlay_t::draw_AABB(toVec3(mesh.bbox.mMin), toVec3(mesh.bbox.mMax), 0x0ff4f0ff, true);
-              }
-
               static auto bla = tree.generate(model.second.draw_model.meshes);
-              draw_tree_recursive(tree.root, " ");
+              // draw_tree_recursive(tree.root, " ");
             }
 
             debug_menu.print_stdcout();
-
             debug_menu.draw(_window, in_menu, deltaTime);
           })
       .stdexit();

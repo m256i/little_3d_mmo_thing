@@ -16,7 +16,7 @@ void
 main()
 {
   vec3 camera_pos = vec3(view[0][2], view[1][2], view[2][2]);
-  camera_distance = length(projection * view * model * vec4(aPos, 1.0) - vec4(camera_pos, 0));
+  camera_distance = length(view * model * vec4(aPos, 1.0) - vec4(camera_pos, 0));
 
   TexCoords   = aTexCoords;
   Normal      = aNormal;

@@ -8,6 +8,8 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vector>
+#include <functional>
 
 using b8 = char;
 using b0 = bool;
@@ -111,3 +113,19 @@ mmax(const auto& _a, const auto& _b)
 #undef max(x, y)
 #endif
 #endif
+
+auto
+enumerate(auto& _container) -> std::vector<std::pair<
+    const std::size_t, std::reference_wrapper<typename std::remove_reference_t<decltype(_container)>::value_type>>>
+{
+  std::vector<std::pair<const std::size_t,
+                        std::reference_wrapper<typename std::remove_reference_t<decltype(_container)>::value_type>>>
+      out{};
+
+  std::size_t counter{0};
+  for (auto& ite : _container)
+  {
+    out.emplace_back(counter++, std::ref(ite));
+  }
+  return out;
+}

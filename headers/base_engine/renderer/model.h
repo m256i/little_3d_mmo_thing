@@ -87,13 +87,17 @@ public:
   render_model_t() = default;
 
   // model data
-  std::vector<mesh_t::texture_t> textures_loaded; // stores all the textures loaded so far, optimization to make sure textures aren't loaded more than once.
+  std::vector<mesh_t::texture_t> textures_loaded; // stores all the textures loaded so far, optimization to make sure
+                                                  // textures aren't loaded more than once.
   std::vector<mesh_t> meshes;
   std::string_view directory;
   bool gamme_corretion;
 
   // constructor, expects a filepath to a 3D model.
-  explicit render_model_t(std::string const &path, bool gamma = false) : gamme_corretion(gamma) { load_render_model(path); }
+  explicit render_model_t(std::string const &path, bool gamma = false) : gamme_corretion(gamma)
+  {
+    load_render_model(path);
+  }
 
   // draws the model, and thus all its meshes
   void
@@ -111,8 +115,10 @@ public:
   {
     // read file via ASSIMP
     Assimp::Importer importer;
-    const aiScene *scene = importer.ReadFile(path.data(), aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | aiProcess_OptimizeMeshes |
-                                                              aiProcess_OptimizeGraph | aiProcess_GenBoundingBoxes);
+    const aiScene *scene =
+        importer.ReadFile(path.data(), aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs |
+                                           aiProcess_CalcTangentSpace | aiProcess_OptimizeMeshes |
+                                           aiProcess_OptimizeGraph | aiProcess_GenBoundingBoxes);
     // check for errors
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) // if is Not Zero
     {
@@ -127,7 +133,8 @@ public:
   }
 
 private:
-  // processes a node in a recursive fashion. Processes each individual mesh located at the node and repeats this process on its children nodes (if any).
+  // processes a node in a recursive fashion. Processes each individual mesh located at the node and repeats this
+  // process on its children nodes (if any).
   void
   process_node(aiNode *node, const aiScene *scene)
   {
@@ -160,8 +167,8 @@ private:
     for (usize i = 0; i < mesh->mNumVertices; i++)
     {
       mesh_t::vertex_t vertex;
-      glm::vec3 vector; // we declare a placeholder vector since assimp uses its own vector class that doesn't directly convert to glm's vec3 class so we transfer the data to this
-                        // placeholder glm::vec3 first.
+      glm::vec3 vector; // we declare a placeholder vector since assimp uses its own vector class that doesn't directly
+                        // convert to glm's vec3 class so we transfer the data to this placeholder glm::vec3 first.
       // positions
       vector.x        = mesh->mVertices[i].x;
       vector.y        = mesh->mVertices[i].y;
@@ -202,7 +209,8 @@ private:
 
       vertices.push_back(vertex);
     }
-    // now wak through each of the mesh's faces (a face is a mesh its triangle) and retrieve the corresponding vertex indices.
+    // now wak through each of the mesh's faces (a face is a mesh its triangle) and retrieve the corresponding vertex
+    // indices.
     for (usize i = 0; i < mesh->mNumFaces; i++)
     {
       aiFace face = mesh->mFaces[i];
@@ -225,7 +233,8 @@ private:
     std::vector<mesh_t::texture_t> diffuseMaps = load_mat_textures(material, aiTextureType_DIFFUSE, "texture_diffuse");
     textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
     // 2. specular maps
-    std::vector<mesh_t::texture_t> specularMaps = load_mat_textures(material, aiTextureType_SPECULAR, "texture_specular");
+    std::vector<mesh_t::texture_t> specularMaps =
+        load_mat_textures(material, aiTextureType_SPECULAR, "texture_specular");
     textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
     // 3. normal maps
     std::vector<mesh_t::texture_t> normalMaps = load_mat_textures(material, aiTextureType_NORMALS, "texture_normal");
@@ -266,7 +275,8 @@ private:
         texture.type = typeName;
         texture.path = str.C_Str();
         textures.push_back(texture);
-        textures_loaded.push_back(texture); // store it as texture loaded for entire model, to ensure we won't unnecessary load duplicate textures.
+        textures_loaded.push_back(texture); // store it as texture loaded for entire model, to ensure we won't
+                                            // unnecessary load duplicate textures.
       }
     }
     return textures;

@@ -8,9 +8,9 @@ in float camera_distance;
 
 uniform sampler2D texture_diffuse1;
 
-const float FOG_DISTANCE = 300;
+const float FOG_DISTANCE = 400;
 const float FOG_FACTOR   = 2;
-const vec4 FOG_COLOR     = vec4(96.f / 255.f, 145.f / 255.f, 152.f / 255.f, 1);
+const vec4 FOG_COLOR     = vec4(230.f / 255.f, 105.f / 255.f, 102.f / 255.f, 1);
 
 void
 main()
@@ -23,7 +23,7 @@ main()
 
   vec2 uv       = TexCoords;
   vec3 col      = 0.5 + 0.5 * cos(uv.xyx + vec3(0, 2, 4));
-  vec3 lightpos = vec3(100.0, 150.0, 000.0);
+  vec3 lightpos = vec3(100.0, 150.0, 0.0);
   vec3 pointing = normalize(Pos - lightpos);
   float light   = clamp(0.1 + clamp(dot(pointing, Normal), 0.0, 1.0), 0.0, 1.0);
 

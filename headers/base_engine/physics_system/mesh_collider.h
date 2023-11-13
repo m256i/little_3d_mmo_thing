@@ -2,6 +2,7 @@
 
 #include <array>
 #include <float.h>
+#include <limits>
 #include <unordered_map>
 #include <vector>
 #include <glm/vec3.hpp>
@@ -12,9 +13,11 @@
 #include "bbox.h"
 #include "../renderer/mesh.h"
 #include "glm/ext/vector_float3.hpp"
+#include "glm/geometric.hpp"
 #include "headers/base_engine/physics_system/bbox.h"
 #include "headers/base_engine/renderer/mesh.h"
 #include "../debug/debug_overlay.h"
+#include "chull.h"
 
 /*
 TODO: generate convex hull for every mesh and put that into the octree
@@ -106,6 +109,35 @@ bbox_bbox_collision_center(const aabb_t& _a, const aabb_t& _b) -> glm::vec3
 }
 
 inline auto
+chull_bbox_collision_center(const convex_hull_t& _hull, const aabb_t& _b) -> glm::vec3
+{
+  static constexpr auto point_in_bbox = [](const glm::vec3& _point, const aabb_t& _bb)
+  {
+    return (_point.x < _bb.max.x && _point.y < _bb.max.y && _point.z < _bb.max.z && _point.x > _bb.min.x &&
+            _point.y > _bb.min.y && _point.z > _bb.min.z);
+  };
+
+  std::vector<glm::vec3> points_inside{};
+  glm::vec3 center{};
+
+  for (const auto& point : _hull.points)
+  {
+    if (point_in_bbox)
+    {
+      points_inside.push_back(point);
+    }
+  }
+
+  for (const auto& point : points_inside)
+  {
+    center += point;
+  }
+
+  center /= points_inside.size();
+  return center;
+}
+
+inline auto
 bbox_overlaps_bbox(const aabb_t& _a, const aabb_t& _b) -> bool
 {
   if (_a.max.x < _b.min.x || _a.min.x > _b.max.x) return false; // No overlap in the X-axis
@@ -116,10 +148,33 @@ bbox_overlaps_bbox(const aabb_t& _a, const aabb_t& _b) -> bool
 }
 
 inline auto
+chull_overlaps_bbox(const convex_hull_t& _hull, const aabb_t& _bb) -> bool
+{
+  for (const auto& point : _hull.points)
+  {
+    if (point.x > _bb.max.x || point.y > _bb.max.y || point.z > _bb.max.z || point.x < _bb.max.x ||
+        point.y < _bb.max.y || point.z < _bb.max.z)
+
+      return false;
+  }
+  return true;
+}
+
+inline auto
 point_inside_bbox(const aabb_t& _box, const glm::vec3& _point) -> bool
 { // bruh
   return (_point.x >= _box.min.x && _point.y >= _box.min.y && _point.z >= _box.min.z) &&
          (_point.x <= _box.max.x && _point.y <= _box.max.y && _point.z <= _box.max.z);
+}
+
+inline auto
+point_inside_chull(const glm::vec3& _point, const convex_hull_t _chull)
+{
+
+  for (const auto& point : _chull.points)
+  {
+  }
+  return true;
 }
 
 inline bool
@@ -136,13 +191,13 @@ recursive_subdivide(tree_node_t& _current_node, const std::vector<mesh_t>& _mesh
     {
       meshes_inside.push_back(pmesh);
     }
-    // else if (bbox_overlaps_bbox(_current_node.bbox, aabb_t(mesh.bbox)))
-    //{
-    //   if (point_inside_bbox(_current_node.bbox, bbox_bbox_collision_center(_current_node.bbox, aabb_t(mesh.bbox))))
-    //   {
-    //     meshes_inside.push_back(pmesh);
-    //   }
-    // }
+    else if (bbox_overlaps_bbox(_current_node.bbox, aabb_t(mesh.bbox)))
+    {
+      if (point_inside_bbox(_current_node.bbox, bbox_bbox_collision_center(_current_node.bbox, aabb_t(mesh.bbox))))
+      {
+        meshes_inside.push_back(pmesh);
+      }
+    }
   }
 
   for (const auto& ite : meshes_inside)
@@ -155,6 +210,7 @@ recursive_subdivide(tree_node_t& _current_node, const std::vector<mesh_t>& _mesh
   }
 
   printf("%sfound %llu meshes inside current box!\n", _recursion_string.c_str(), meshes_inside.size());
+  LOG(INFO) << _recursion_string.c_str() << "found " << meshes_inside.size() << "meshes inside curernt box!";
 
   // no meshes inside of this octal no need to parse further
   /* false here indicates that the _current_node node can be deleted since there are no meshes inside */
@@ -178,11 +234,13 @@ recursive_subdivide(tree_node_t& _current_node, const std::vector<mesh_t>& _mesh
   }
 
   printf("%sfound %llu unique meshes inside current box!\n", _recursion_string.c_str(), meshes_inside.size());
+  LOG(INFO) << _recursion_string.c_str() << "found " << meshes_inside.size() << " unique meshes inside current box!";
 
   // we want exactly 2 or less e unique meshes per cube
   if (unique_counter == 1)
   {
     printf("%sfound 3 or less meshes inside current box, returning!\n", _recursion_string.c_str());
+    LOG(INFO) << _recursion_string.c_str() << "found 3 or less meshes inside current box, returning!";
     for (const auto& ite : meshes_inside)
     {
       _current_node.meshes.push_back(collision_mesh_t{ite->vertices});
@@ -193,23 +251,28 @@ recursive_subdivide(tree_node_t& _current_node, const std::vector<mesh_t>& _mesh
   for (usize i = 0; i != 8; ++i)
   {
     printf("%soctal index %llu created!\n", _recursion_string.c_str(), i);
+    LOG(INFO) << _recursion_string.c_str() << "octal index " << i << " created!";
 
     auto new_octal                  = sub_octal_t(_current_node.bbox.min, _current_node.bbox.max, i);
     _current_node.children[i]       = new tree_node_t;
     _current_node.children[i]->bbox = aabb_t(new_octal.m_min, new_octal.m_max);
 
     printf("%smeshes inside size pre recursion: %llu\n", _recursion_string.c_str(), meshes_inside.size());
+    LOG(INFO) << _recursion_string.c_str() << "meshes inside size pre recursion: " << meshes_inside.size();
 
     if (recursive_subdivide(*_current_node.children[i], _meshes, meshes_inside, _recursion_string + "|  ") == false)
     {
       printf("%smeshes inside size: %llu after call\n", _recursion_string.c_str(), meshes_inside.size());
+      LOG(INFO) << _recursion_string.c_str() << "meshes inside size: " << meshes_inside.size();
       printf("%sno more meshes found deleting branch\n", _recursion_string.c_str());
+      LOG(INFO) << _recursion_string.c_str() << "no more meshes found deleting branch";
       delete _current_node.children[i];
     }
 
     if (meshes_inside.empty())
     {
       printf("%srecursion got rid of all suubmeshes returning!\n", _recursion_string.c_str());
+      LOG(INFO) << _recursion_string.c_str() << "recursion got rid of all suubmeshes returning!";
       return true;
     }
   }
@@ -227,7 +290,6 @@ struct partial_spacial_tree_t
   bool
   generate(std::vector<mesh_t>& _meshes)
   {
-    static constexpr auto toVec3 = [](const aiVector3D& _vec) { return glm::vec3{_vec.x, _vec.y, _vec.z}; };
     /* find coords and sizes for all covering bboc */
     glm::vec3 min{FLT_MAX, FLT_MAX, FLT_MAX}, max{0.f, 0.f, 0.f};
 
