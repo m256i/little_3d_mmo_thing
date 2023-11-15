@@ -5,12 +5,10 @@
 #include <glm/vec3.hpp>
 #include <array>
 
+#include <assimp/vector3.h>
 #include <assimp/aabb.h>
 
 #include "../../common.h"
-#include "assimp/vector3.h"
-#include "glm/ext/vector_float3.hpp"
-
 /*
 TODO:
   - make octree with AABBs then do collision based on direct vertices

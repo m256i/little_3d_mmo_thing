@@ -6,13 +6,13 @@
 
 #include <glm/vec3.hpp>
 
-#include "../renderer/shader.h"
-#include "../../common.h"
-#include "../renderer/camera.h"
-#include "../../logging/easylogging++.h"
+#include <base_engine/renderer/shader.h>
+#include <base_engine/renderer/camera.h>
 
-#include "GLFW/glfw3.h"
-#include "headers/base_engine/renderer/shader.h"
+#include <GLFW/glfw3.h>
+#include <logging/easylogging++.h>
+
+#include "../../common.h"
 
 static constexpr std::array<glm::vec3, 8> default_cube_verts{
     glm::vec3{-1, -1, 1}, // 0 bottom left

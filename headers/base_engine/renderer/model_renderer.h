@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../../common.h"
-
 #include <vector>
 #include <string_view>
 #include <unordered_map>
 
-#include "static_world_model.h"
+#include <base_engine/renderer/static_world_model.h>
+
+#include "../../common.h"
 
 struct model_renderer_t
 {
