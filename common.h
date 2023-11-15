@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 #include <functional>
+#include "headers/logging/easylogging++.h"
 
 using b8 = char;
 using b0 = bool;
@@ -129,3 +130,17 @@ enumerate(auto& _container) -> std::vector<std::pair<
   }
   return out;
 }
+
+struct color_t
+{
+  u8 r, g, b, a;
+
+  color_t(u8 _r, u8 _g, u8 _b, u8 _a) : r(_r), g(_g), b(_b), a(_a) {}
+  color_t(u32 _col) : r(_col >> 24), g((_col >> 16) & 0xff), b((_col >> 8) & 0xff), a((_col)&0xff) {}
+
+  u32
+  as_u32()
+  {
+    return (u32)((u32)r << 24 | (u32)g << 16 | (u32)b << 8 | (u32)a);
+  }
+};

@@ -33,13 +33,12 @@
 
 #include "headers/base_engine/renderer/game_renderer.h"
 #include "headers/base_engine/physics_system/mesh_collider.h"
+#include "headers/base_engine/physics_system/chull.h"
 
 #include "headers/base_engine/debug/debug_menu.h"
 #include "headers/base_engine/debug/debug_overlay.h"
 
 #include "headers/logging/easylogging++.h"
-
-#include <quickhull/QuickHull.hpp>
 
 constinit f32 lastX = 1920.f / 2.0f;
 constinit f32 lastY = 1080.f / 2.0f;
@@ -103,29 +102,15 @@ remove stupi monad thing
 input system
 */
 
-void
-draw_tree_recursive(const tree_node_t& branch, std::string recursion_string)
+inline void
+draw_tree_recursive(const tree_node_t& branch)
 {
-  // printf("%sdrawing index: %llu\n", recursion_string.c_str(), failsafe);
-
-  // debug_overlay_t::draw_AABB(branch.bbox.min, branch.bbox.max, 0xff04f0ff, true);
-
-  // for (const auto& mesh : branch.meshes)
-  //{
-  //   for (usize i = 0; i < mesh.vertices.size() - 1; i += 2)
-  //   {
-  //     std::array<glm::vec3, 2> vert;
-  //     vert[0] = mesh.vertices[i].position;
-  //     vert[1] = mesh.vertices[i + 1].position;
-  //     // debug_overlay_t::draw_line(vert, 0x01fff0ff, true);
-  //   }
-  // }
-
+  debug_overlay_t::draw_AABB(branch.bbox.min, branch.bbox.max, 0xff04f0ff, true);
   for (const auto& ite : branch.children)
   {
     if (ite != nullptr)
     {
-      draw_tree_recursive(*ite, recursion_string + "|  ");
+      draw_tree_recursive(*ite);
     }
   }
 }
@@ -141,6 +126,8 @@ main(i32 argc, char** argv) -> i32
   debug_menu_t debug_menu{};
   partial_spacial_tree_t tree{};
 
+  std::unordered_map<u32, convex_hull_t> sub_hulls;
+
   return create_window("WoW Clone :D", false)
       .register_callback(glfwSetCursorPosCallback, mouse_callback)
       .init(
@@ -150,12 +137,13 @@ main(i32 argc, char** argv) -> i32
             debug_overlay_t::init(_window, game_renderer.game_camera);
 
             game_renderer.update_frame_buffer(_window);
-            game_renderer.model_renderer.add_model("dungeon", "../data/valgarde_70gw.obj");
+            game_renderer.model_renderer.add_model("dungeon", "../data/duskwoodchapel.obj");
+            tree.generate(game_renderer.model_renderer.static_world_models.at("dungeon").draw_model.meshes);
           })
       .loop(
           [&](GLFWwindow* _window)
           {
-            glClearColor(0.3f, 0.1f, 0.8f, 1.f);
+            glClearColor(0.1f, 0.1f, 0.1f, 1.f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             process_input(_window);
@@ -164,17 +152,35 @@ main(i32 argc, char** argv) -> i32
             deltaTime        = currentFrame - lastFrame;
             lastFrame        = currentFrame;
 
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
             game_renderer.render();
-
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
             for (auto& model : game_renderer.model_renderer.static_world_models)
             {
-              static auto bla = tree.generate(model.second.draw_model.meshes);
-              // draw_tree_recursive(tree.root, " ");
+              draw_tree_recursive(tree.root);
+
+              for (const auto& mesh : model.second.draw_model.meshes)
+              {
+                if (sub_hulls[mesh.VAO].points.empty())
+                {
+                  sub_hulls[mesh.VAO].load(mesh);
+                }
+                sub_hulls[mesh.VAO].to_submeshes();
+              }
             }
+
+            auto collision_meshes = tree.find(game_renderer.game_camera.vec_position);
+
+            glPointSize(5);
+
+            for (const auto& ite : collision_meshes)
+            {
+              for (const auto& vert : ite.vertices)
+              {
+                // debug_overlay_t::draw_point(vert.position, 0xffffffff, false);
+              }
+            }
+
+            glPointSize(1);
 
             debug_menu.print_stdcout();
             debug_menu.draw(_window, in_menu, deltaTime);

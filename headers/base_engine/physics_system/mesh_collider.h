@@ -1,8 +1,10 @@
 #pragma once
 
 #include <array>
+#include <exception>
 #include <float.h>
 #include <limits>
+#include <sal.h>
 #include <unordered_map>
 #include <vector>
 #include <glm/vec3.hpp>
@@ -15,6 +17,7 @@
 #include "glm/ext/vector_float3.hpp"
 #include "glm/geometric.hpp"
 #include "headers/base_engine/physics_system/bbox.h"
+#include "headers/base_engine/physics_system/chull.h"
 #include "headers/base_engine/renderer/mesh.h"
 #include "../debug/debug_overlay.h"
 #include "chull.h"
@@ -147,6 +150,7 @@ bbox_overlaps_bbox(const aabb_t& _a, const aabb_t& _b) -> bool
   return true;
 }
 
+// TODO FIX
 inline auto
 chull_overlaps_bbox(const convex_hull_t& _hull, const aabb_t& _bb) -> bool
 {
@@ -167,36 +171,76 @@ point_inside_bbox(const aabb_t& _box, const glm::vec3& _point) -> bool
          (_point.x <= _box.max.x && _point.y <= _box.max.y && _point.z <= _box.max.z);
 }
 
+// we can assume ccw orientation so we can use points sequential to each other
 inline auto
 point_inside_chull(const glm::vec3& _point, const convex_hull_t _chull)
 {
-
-  for (const auto& point : _chull.points)
+  static constexpr auto get_side =
+      [](const glm::vec3& point, const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& p3)
   {
+    glm::vec3 v_point = point - p1;
+    glm::vec3 normal  = glm::cross(p2 - p1, p3 - p1);
+    normal            = glm::normalize(normal);
+
+    f32 dot_point = glm::dot(normal, v_point);
+    bool on_side  = dot_point > 0;
+    return on_side;
+  };
+
+  for (usize i = 0; i != _chull.indices.size() - 2; i += 3)
+  {
+    auto& p1 = _chull.points[_chull.indices[i + 0]];
+    auto& p2 = _chull.points[_chull.indices[i + 1]];
+    auto& p3 = _chull.points[_chull.indices[i + 2]];
+
+    auto center_side = get_side(_chull.center, p1, p2, p3);
+
+    if (get_side(_point, p1, p2, p3) != center_side)
+    {
+      return false;
+    }
   }
   return true;
+}
+
+inline bool
+simplify(const std::vector<mesh_t>& _meshes, std::vector<mesh_t>& out_meshes)
+{
 }
 
 inline bool
 recursive_subdivide(tree_node_t& _current_node, const std::vector<mesh_t>& _meshes,
                     std::vector<mesh_t*>& _inside_meshes, std::string _recursion_string)
 {
+  if (_meshes.empty() || _inside_meshes.empty())
+  {
+    return true;
+  }
+
   std::vector<mesh_t*> meshes_inside{};
 
-  for (auto& pmesh : _inside_meshes)
+  for (auto pmesh : _inside_meshes)
   {
-    auto& mesh = *pmesh;
+    if (pmesh == nullptr)
+    {
+      continue;
+    }
 
-    if (point_inside_bbox(_current_node.bbox, aabb_t(mesh.bbox).get_center()))
+    auto& mesh = *pmesh;
+    convex_hull_t ch{};
+    ch.from_mesh(mesh);
+
+    if (point_inside_bbox(_current_node.bbox, ch.center))
     {
       meshes_inside.push_back(pmesh);
     }
-    else if (bbox_overlaps_bbox(_current_node.bbox, aabb_t(mesh.bbox)))
+    else if (chull_overlaps_bbox(ch, _current_node.bbox))
     {
-      if (point_inside_bbox(_current_node.bbox, bbox_bbox_collision_center(_current_node.bbox, aabb_t(mesh.bbox))))
-      {
-        meshes_inside.push_back(pmesh);
-      }
+      // TODO potentioannly unneeded
+      // if (point_inside_bbox(_current_node.bbox, chull_bbox_collision_center(ch, _current_node.bbox)))
+      // {
+      meshes_inside.push_back(pmesh);
+      // }
     }
   }
 
@@ -227,7 +271,9 @@ recursive_subdivide(tree_node_t& _current_node, const std::vector<mesh_t>& _mesh
     std::unordered_map<glm::vec3, int, decltype(hash), decltype(equal)> centers{};
     for (const auto& ite : meshes_inside)
     {
-      centers[aabb_t(ite->bbox).get_center()] = 1;
+      convex_hull_t ch{};
+      ch.from_mesh(*ite);
+      centers[ch.center] = 1;
     }
 
     unique_counter = centers.size();
@@ -237,7 +283,7 @@ recursive_subdivide(tree_node_t& _current_node, const std::vector<mesh_t>& _mesh
   LOG(INFO) << _recursion_string.c_str() << "found " << meshes_inside.size() << " unique meshes inside current box!";
 
   // we want exactly 2 or less e unique meshes per cube
-  if (unique_counter == 1)
+  if (unique_counter <= 2)
   {
     printf("%sfound 3 or less meshes inside current box, returning!\n", _recursion_string.c_str());
     LOG(INFO) << _recursion_string.c_str() << "found 3 or less meshes inside current box, returning!";
@@ -258,21 +304,22 @@ recursive_subdivide(tree_node_t& _current_node, const std::vector<mesh_t>& _mesh
     _current_node.children[i]->bbox = aabb_t(new_octal.m_min, new_octal.m_max);
 
     printf("%smeshes inside size pre recursion: %llu\n", _recursion_string.c_str(), meshes_inside.size());
-    LOG(INFO) << _recursion_string.c_str() << "meshes inside size pre recursion: " << meshes_inside.size();
+    LOG(INFO) << _recursion_string << "meshes inside size pre recursion: " << meshes_inside.size();
 
     if (recursive_subdivide(*_current_node.children[i], _meshes, meshes_inside, _recursion_string + "|  ") == false)
     {
       printf("%smeshes inside size: %llu after call\n", _recursion_string.c_str(), meshes_inside.size());
-      LOG(INFO) << _recursion_string.c_str() << "meshes inside size: " << meshes_inside.size();
+      LOG(INFO) << _recursion_string << "meshes inside size: " << meshes_inside.size();
       printf("%sno more meshes found deleting branch\n", _recursion_string.c_str());
-      LOG(INFO) << _recursion_string.c_str() << "no more meshes found deleting branch";
+      LOG(INFO) << _recursion_string << "no more meshes found deleting branch";
       delete _current_node.children[i];
+      _current_node.children[i] = nullptr;
     }
 
     if (meshes_inside.empty())
     {
       printf("%srecursion got rid of all suubmeshes returning!\n", _recursion_string.c_str());
-      LOG(INFO) << _recursion_string.c_str() << "recursion got rid of all suubmeshes returning!";
+      LOG(INFO) << _recursion_string << "recursion got rid of all suubmeshes returning!";
       return true;
     }
   }
@@ -349,17 +396,42 @@ struct partial_spacial_tree_t
       inside_meshes.push_back(&ite);
     }
 
-    return recursive_subdivide(root, _meshes, inside_meshes, " ");
+    auto result = recursive_subdivide(root, _meshes, inside_meshes, " ");
+    return result;
   }
 
-  std::vector<tree_node_t*>
+  std::vector<collision_mesh_t>
   find(glm::vec3 _position)
   {
-    tree_node_t* current = &root;
+    tree_node_t *final_node = nullptr, *current_node = &root;
 
-    while (true)
+    usize already_seen = 0;
+
+    while (final_node == nullptr)
     {
+      already_seen = 0;
+      for (const auto ite : current_node->children)
+      {
+        if (ite == nullptr)
+        {
+          already_seen++;
+          continue;
+        }
+        if (point_inside_bbox(ite->bbox, _position))
+        {
+          current_node = ite;
+          break;
+        }
+        already_seen++;
+      }
+
+      if (already_seen == 8)
+      {
+        final_node = current_node;
+      }
     }
+
+    return final_node->meshes;
   }
 
   glm::vec3 origin{};

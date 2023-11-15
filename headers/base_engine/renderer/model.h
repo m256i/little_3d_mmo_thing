@@ -25,7 +25,7 @@
 #include "../../logging/easylogging++.h"
 
 inline u32
-load_texture_from_file(std::string_view path, std::string_view directory)
+load_texture_from_file(std::string_view path, std::string_view directory, u32 &_width, u32 &_height)
 {
   std::string filename = std::string(path);
   filename             = std::string(directory) + '/' + filename;
@@ -35,6 +35,10 @@ load_texture_from_file(std::string_view path, std::string_view directory)
 
   i32 width, height, num_channels;
   u8 *data = stbi_load(filename.c_str(), &width, &height, &num_channels, 0);
+
+  _width  = width;
+  _height = height;
+
   if (data)
   {
     u32 format{0};
@@ -271,7 +275,7 @@ private:
       if (!skip)
       { // if texture hasn't been loaded already, load it
         mesh_t::texture_t texture;
-        texture.id   = load_texture_from_file({str.C_Str()}, this->directory);
+        texture.id   = load_texture_from_file({str.C_Str()}, this->directory, texture.width, texture.height);
         texture.type = typeName;
         texture.path = str.C_Str();
         textures.push_back(texture);

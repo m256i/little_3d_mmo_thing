@@ -45,7 +45,7 @@ struct mesh_t
 
   struct texture_t
   {
-    u32 id;
+    u32 id, width, height;
     std::string type;
     std::string path;
   };
