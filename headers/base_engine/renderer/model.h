@@ -52,17 +52,13 @@ public:
   }
 
   // loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
-  void
-  load_render_model(std::string_view path);
+  void load_render_model(std::string_view path);
   // processes a node in a recursive fashion. Processes each individual mesh located at the node and repeats this
   // process on its children nodes (if any).
-  void
-  process_node(aiNode *node, const aiScene *scene);
+  void process_node(aiNode *node, const aiScene *scene);
 
-  mesh_t
-  process_mesh(aiMesh *mesh, const aiScene *scene);
+  mesh_t process_mesh(aiMesh *mesh, const aiScene *scene);
   // checks all material textures of a given type and loads the textures if they're not loaded yet.
   // the required info is returned as a Texture struct.
-  std::vector<mesh_t::texture_t>
-  load_mat_textures(aiMaterial *mat, aiTextureType type, std::string_view typeName);
+  std::vector<mesh_t::texture_t> load_mat_textures(aiMaterial *mat, aiTextureType type, std::string_view typeName);
 };

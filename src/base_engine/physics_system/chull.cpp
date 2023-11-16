@@ -1,3 +1,5 @@
+#include "base_engine/physics_system/bbox.h"
+#include <deque>
 #define ENABLE_VHACD_IMPLEMENTATION 1
 #include <vhacd/VHACD.h>
 
@@ -9,7 +11,8 @@
 
 #include <base_engine/physics_system/chull.h>
 #include <base_engine/debug/debug_overlay.h>
-
+#include <vhacd/wavefront.h>
+#include <qms/Simplify.h>
 
 #ifdef min
 #undef min
@@ -158,6 +161,98 @@ convex_hull_t::reduce(const std::vector<glm::vec3>& _vertices, double _min_dista
   return simplified;
 }
 
+struct voxel_grid_t
+{
+  aabb_t bbox;
+  usize count_rows{}, count_columns{}, count_stories{};
+  std::vector<std::vector<std::vector<bool>>> grid;
+
+  u0
+  setup(usize _count_rows, usize _count_columns, usize _count_stories)
+  {
+    // mental health: 90%
+    grid.resize(_count_stories);
+    grid[0].resize(_count_columns);
+    grid[0][0].resize(_count_rows);
+    // mental health: 85%
+  }
+
+  u0
+  generate(const aabb_t& bbox, const std::vector<glm::vec3>& _vertices, usize _vert_count, u32* _indices,
+           usize _index_count)
+  {
+    std::deque<std::pair<glm::vec3, bool>> verts;
+
+    for (const auto& vert : _vertices)
+    {
+      verts.push_back(std::pair{vert, true});
+    }
+
+    // rows
+    f32 box_x_len = bbox.max.x - bbox.min.x;
+    // stories
+    f32 box_y_len = bbox.max.y - bbox.min.y;
+    // columns
+    f32 box_z_len = bbox.max.z - bbox.min.z;
+
+    const f32 voxel_story_length  = box_y_len / count_stories;
+    const f32 voxel_column_length = box_z_len / count_columns;
+    const f32 voxel_row_length    = box_x_len / count_stories;
+
+    // TODO: use triangles instead of points
+
+    // mental health: 87% got some coffee :D
+    usize story_index{0};
+    for (const auto& stories : grid)
+    {
+      usize column_index{0};
+      for (const auto& column : stories)
+      {
+        usize row_index{0};
+        for (const auto& row : column)
+        {
+          // mental health: 74%
+          auto voxel_min = bbox.min + glm::vec3{0.f, voxel_story_length, 0.f} * (f32)story_index +
+                           glm::vec3{0.f, 0.f, voxel_column_length} * (f32)column_index +
+                           glm::vec3{voxel_row_length, 0.f, 0.f} * (f32)row_index;
+
+          auto voxel_max = bbox.min + glm::vec3{0.f, voxel_story_length, 0.f} * (f32)(story_index + 1) +
+                           glm::vec3{0.f, 0.f, voxel_column_length} * (f32)(column_index + 1) +
+                           glm::vec3{voxel_row_length, 0.f, 0.f} * (f32)(row_index + 1);
+
+          aabb_t current_voxel{voxel_min, voxel_max};
+
+          for (auto& vert : verts)
+          {
+            if (vert.second == false)
+            {
+              continue;
+            }
+            // mental health: 71%
+            // TODO: needs to be triangle intersects bbox
+            static constexpr auto point_inside_bbox = [](const aabb_t& _box, const glm::vec3& _point) -> bool
+            {
+              // bruh
+              return (_point.x >= _box.min.x && _point.y >= _box.min.y && _point.z >= _box.min.z) &&
+                     (_point.x <= _box.max.x && _point.y <= _box.max.y && _point.z <= _box.max.z);
+            };
+
+            if (point_inside_bbox(current_voxel, vert.first))
+            {
+              vert.second                                = false;
+              grid[story_index][column_index][row_index] = true;
+              // mental health: 32%
+            }
+          }
+          ++row_index;
+        }
+        ++column_index;
+      }
+      ++story_index;
+    }
+  }
+};
+
 bool
 convex_hull_t::to_submeshes()
 {
@@ -180,6 +275,14 @@ convex_hull_t::to_submeshes()
     return true;
   }
 
+  WavefrontObj new_obj;
+
+  new_obj.loadObj("../data/duskwoodchapel2.obj");
+
+  Simplify::load_obj("../data/duskwoodchapel.obj");
+  Simplify::simplify_mesh(Simplify::triangles.size(), 4.f, true);
+  Simplify::write_obj("../data/duskwoodchapel2.obj");
+
   Logging logging;
   VHACD::IVHACD::Parameters p;
 
@@ -187,15 +290,14 @@ convex_hull_t::to_submeshes()
   p.m_logger   = &logging;
 
   p.m_fillMode            = VHACD::FillMode::RAYCAST_FILL;
-  p.m_maxNumVerticesPerCH = 6;
-  p.m_maxConvexHulls      = 2;
-  p.m_findBestPlane       = true;
-  p.m_shrinkWrap          = true;
-  p.m_minEdgeLength       = 10;
+  p.m_maxNumVerticesPerCH = 4;
+  p.m_maxConvexHulls      = 50;
+  p.m_findBestPlane       = false;
+  p.m_shrinkWrap          = false;
 
   VHACD::IVHACD* iface = VHACD::CreateVHACD();
 
-  iface->Compute((f32*)points.data(), points.size(), (u32*)indices.data(), indices.size() / 3, p);
+  iface->Compute(new_obj.mVertices, new_obj.mVertexCount, new_obj.mIndices, new_obj.mTriCount, p);
 
   LOG(INFO) << "finished generating!";
 

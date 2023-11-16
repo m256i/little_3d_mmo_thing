@@ -15,8 +15,8 @@ TODO:
 */
 
 // fuck fucking msvc bro holy shit
-#undef min(x, y)
-#undef max(x, y)
+#undef min
+#undef max
 
 struct aabb_t
 {

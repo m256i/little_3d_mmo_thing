@@ -107,11 +107,11 @@ mmax(const auto& _a, const auto& _b)
   return _a > _b ? _a : _b;
 }
 
-#ifdef min(x, y)
-#undef min(x, y)
+#ifdef min
+#undef min
 #else
-#ifdef max(x, y)
-#undef max(x, y)
+#ifdef max
+#undef max
 #endif
 #endif
 

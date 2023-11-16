@@ -138,7 +138,7 @@ main(i32 argc, char** argv) -> i32
 
             game_renderer.update_frame_buffer(_window);
             game_renderer.model_renderer.add_model("dungeon", "../data/duskwoodchapel.obj");
-            tree.generate(game_renderer.model_renderer.static_world_models.at("dungeon").draw_model.meshes);
+            // tree.generate(game_renderer.model_renderer.static_world_models.at("dungeon").draw_model.meshes);
           })
       .loop(
           [&](GLFWwindow* _window)
@@ -152,21 +152,25 @@ main(i32 argc, char** argv) -> i32
             deltaTime        = currentFrame - lastFrame;
             lastFrame        = currentFrame;
 
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
             game_renderer.render();
 
-            for (auto& model : game_renderer.model_renderer.static_world_models)
-            {
-              draw_tree_recursive(tree.root);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-              for (const auto& mesh : model.second.draw_model.meshes)
-              {
-                if (sub_hulls[mesh.VAO].points.empty())
-                {
-                  sub_hulls[mesh.VAO].load(mesh);
-                }
-                sub_hulls[mesh.VAO].to_submeshes();
-              }
-            }
+            // for (auto& model : game_renderer.model_renderer.static_world_models)
+            // {
+            //   draw_tree_recursive(tree.root);
+
+            //   for (const auto& mesh : model.second.draw_model.meshes)
+            //   {
+            //     if (sub_hulls[mesh.VAO].points.empty())
+            //     {
+            //       sub_hulls[mesh.VAO].load(mesh);
+            //     }
+            //     sub_hulls[mesh.VAO].to_submeshes();
+            //   }
+            // }
 
             auto collision_meshes = tree.find(game_renderer.game_camera.vec_position);
 
