@@ -16,6 +16,10 @@
 TODO: generate convex hull for every mesh and put that into the octree
 split mesh into faces with normals for collision checking
 */
+struct triangle_t
+{
+  glm::vec3 a{}, b{}, c{};
+};
 
 struct collision_mesh_t
 {
@@ -87,11 +91,9 @@ struct tree_node_t
 
 struct partial_spacial_tree_t
 {
-  bool
-  generate(std::vector<mesh_t>& _meshes);
+  bool generate(std::vector<mesh_t>& _meshes);
 
-  std::vector<collision_mesh_t>
-  find(glm::vec3 _position);
+  std::vector<collision_mesh_t> find(glm::vec3 _position);
 
   glm::vec3 origin{};
   tree_node_t root;

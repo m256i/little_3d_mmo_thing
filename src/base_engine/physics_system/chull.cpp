@@ -1,4 +1,3 @@
-#include "base_engine/physics_system/bbox.h"
 #include <deque>
 #define ENABLE_VHACD_IMPLEMENTATION 1
 #include <vhacd/VHACD.h>
@@ -6,11 +5,14 @@
 #include <cmath>
 #include <exception>
 #include <glm/glm.hpp>
+#include <glm/gtx/intersect.hpp>
 #include <quickhull/QuickHull.hpp>
 #include <vector>
 
 #include <base_engine/physics_system/chull.h>
+#include <base_engine/physics_system/mesh_collider.h>
 #include <base_engine/debug/debug_overlay.h>
+#include <base_engine/physics_system/bbox.h>
 #include <vhacd/wavefront.h>
 #include <qms/Simplify.h>
 
@@ -177,15 +179,33 @@ struct voxel_grid_t
     // mental health: 85%
   }
 
-  u0
-  generate(const aabb_t& bbox, const std::vector<glm::vec3>& _vertices, usize _vert_count, u32* _indices,
-           usize _index_count)
+  float
+  calculateTriangleArea(const triangle_t& triangle)
   {
-    std::deque<std::pair<glm::vec3, bool>> verts;
+    // Calculate area of triangle
+    return calculateTriangleArea(triangle.a, triangle.b, triangle.c);
+  }
 
-    for (const auto& vert : _vertices)
+  float
+  calculatePercentage(const triangle_t& triangle, const aabb_t& bbox)
+  {
+    float intersectionArea = calculateIntersectionArea(triangle, bbox);
+    float triangleArea     = calculateTriangleArea(triangle);
+
+    // Calculate percentage
+    float percentage = (intersectionArea / triangleArea) * 100.0f;
+
+    return percentage;
+  }
+
+  u0
+  generate(const aabb_t& bbox, const std::vector<triangle_t>& _triangles, usize _tri_count)
+  {
+    std::deque<triangle_t> tris;
+
+    for (const auto& tri : _triangles)
     {
-      verts.push_back(std::pair{vert, true});
+      tris.push_back(tri);
     }
 
     // rows
@@ -222,12 +242,8 @@ struct voxel_grid_t
 
           aabb_t current_voxel{voxel_min, voxel_max};
 
-          for (auto& vert : verts)
+          for (auto& tri : tris)
           {
-            if (vert.second == false)
-            {
-              continue;
-            }
             // mental health: 71%
             // TODO: needs to be triangle intersects bbox
             static constexpr auto point_inside_bbox = [](const aabb_t& _box, const glm::vec3& _point) -> bool
@@ -237,7 +253,44 @@ struct voxel_grid_t
                      (_point.x <= _box.max.x && _point.y <= _box.max.y && _point.z <= _box.max.z);
             };
 
-            if (point_inside_bbox(current_voxel, vert.first))
+            static constexpr auto tri_inside_bbox = [](const aabb_t& _box, const triangle_t& _point, f32 _thresold)
+            {
+              static constexpr auto calc_tri_area = [](const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2)
+              {
+                glm::vec3 v0 = p1 - p0;
+                glm::vec3 v1 = p2 - p0;
+                return 0.5f * glm::length(glm::cross(v0, v1));
+              };
+
+              static constexpr auto calculate_tri_area_ = [](const triangle_t& triangle)
+  {
+    // Calculate area of triangle
+    return calculateTriangleArea(triangle.a, triangle.b, triangle.c);
+  };
+
+              static constexpr auto calcuate_intersection_area = [](const triangle_t& triangle, const aabb_t& bbox)
+              {
+                glm::vec3 baryPosition;
+                bool intersection = glm::intersectLineTriangle(bbox.min, glm::normalize(triangle.a - bbox.min),
+                                                               triangle.a, triangle.b, triangle.c, baryPosition);
+
+                if (!intersection)
+                {
+                  return 0.0f;
+                }
+
+                glm::vec3 intersectionPoint = triangle.a + baryPosition.x * (triangle.b - triangle.s) +
+                                              baryPosition.y * (triangle.c - triangle.a);
+                float intersectionArea = calculateTriangleArea(intersectionPoint, triangle.b, triangle.c);
+                return intersectionArea;
+              };
+
+
+
+            };
+
+            if (tri_inside_bbox(current_voxel, tri,
+                                70.f /* % of the triangle that has to be inside of the box to count */))
             {
               vert.second                                = false;
               grid[story_index][column_index][row_index] = true;
@@ -276,7 +329,6 @@ convex_hull_t::to_submeshes()
   }
 
   WavefrontObj new_obj;
-
   new_obj.loadObj("../data/duskwoodchapel2.obj");
 
   Simplify::load_obj("../data/duskwoodchapel.obj");
