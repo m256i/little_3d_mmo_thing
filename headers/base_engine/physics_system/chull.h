@@ -1,8 +1,10 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <exception>
 #include <glm/glm.hpp>
+#include <limits>
 #include <vector>
 #include <glm/gtx/intersect.hpp>
 
@@ -13,6 +15,7 @@
 
 #include "../../common.h"
 #include "glm/geometric.hpp"
+#include <glm/simd/trigonometric.h>
 
 struct convex_hull_t
 {
@@ -104,6 +107,34 @@ struct voxel_grid_t
             // TODO: fix: broken burh
             static constexpr auto tri_inside_bbox = [](const aabb_t& _box, const triangle_t& _tri, f32 _thresold)
             {
+              static constexpr auto gen_tri_bbox = [](const triangle_t& _tri)
+              {
+                f32 lowest_x = std::numeric_limits<f32>::max(), lowest_z = std::numeric_limits<f32>::max(),
+                    lowest_y = std::numeric_limits<f32>::max();
+
+                f32 highest_x = std::numeric_limits<f32>::min(), highest_y = std::numeric_limits<f32>::min(),
+                    highest_z = std::numeric_limits<f32>::min();
+
+                highest_x = std::max({_tri.a.x, _tri.b.x, _tri.c.x});
+                highest_y = std::max({_tri.a.y, _tri.b.y, _tri.c.y});
+                highest_z = std::max({_tri.a.z, _tri.b.z, _tri.c.z});
+
+                lowest_x = std::min({_tri.a.x, _tri.b.x, _tri.c.x});
+                lowest_y = std::min({_tri.a.y, _tri.b.y, _tri.c.y});
+                lowest_z = std::min({_tri.a.z, _tri.b.z, _tri.c.z});
+
+                return aabb_t{glm::vec3{lowest_x, lowest_y, lowest_z}, glm::vec3{highest_x, highest_y, highest_z}};
+              };
+
+              static constexpr auto bbox_overlaps_bbox = [](const aabb_t& _a, const aabb_t& _b) -> bool
+              {
+                if (_a.max.x < _b.min.x || _a.min.x > _b.max.x) return false; // No overlap in the X-axis
+                if (_a.max.y < _b.min.y || _a.min.y > _b.max.y) return false; // No overlap in the Y-axis
+                if (_a.max.z < _b.min.z || _a.min.z > _b.max.z) return false; // No overlap in the Z-axis
+
+                return true;
+              };
+
               static constexpr auto point_inside_bbox = [](const aabb_t& _box, const glm::vec3& _point) -> bool
               {
                 // bruh
@@ -141,16 +172,20 @@ struct voxel_grid_t
               static constexpr auto calculate_percentage = [](const triangle_t& triangle, const aabb_t& bbox)
               {
                 f32 intersectionArea = calcuate_intersection_area(triangle, bbox);
-                f32 triangleArea     = calculate_tri_area(triangle);
+                f32 triangleArea     = std::fabsf(calculate_tri_area(triangle));
                 f32 percentage       = (intersectionArea / triangleArea);
                 return percentage;
               };
-
-              return (calculate_percentage(_tri, _box) >= _thresold);
+              if (bbox_overlaps_bbox(_box, gen_tri_bbox(_tri)) or bbox_overlaps_bbox(gen_tri_bbox(_tri), _box))
+              {
+                return true;
+              }
+              return false;
+              //return (calculate_percentage(_tri, _box) >= _thresold);
             };
 
             /* % of the triangle that has to be inside of the box to count */
-            if (tri_inside_bbox(current_voxel, tri, 20.f))
+            if (tri_inside_bbox(current_voxel, tri, 90.f))
             {
               grid[story_index][column_index][row_index] = true;
               // mental health: 32%
@@ -196,7 +231,7 @@ struct voxel_grid_t
 
           aabb_t current_voxel{voxel_min, voxel_max};
 
-          if (!row)
+          if (row)
           {
             debug_overlay_t::draw_AABB(current_voxel.min, current_voxel.max, 0xffffffff, true);
           }
