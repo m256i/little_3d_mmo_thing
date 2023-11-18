@@ -16,10 +16,6 @@
 TODO: generate convex hull for every mesh and put that into the octree
 split mesh into faces with normals for collision checking
 */
-struct triangle_t
-{
-  glm::vec3 a{}, b{}, c{};
-};
 
 struct collision_mesh_t
 {

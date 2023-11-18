@@ -126,9 +126,8 @@ main(i32 argc, char** argv) -> i32
   std::unordered_map<u32, debug_bbox_t> debug_boxes{};
   debug_menu_t debug_menu{};
   partial_spacial_tree_t tree{};
-  voxel_grid_t vgrid;
 
-  std::unordered_map<u32, convex_hull_t> sub_hulls;
+  std::unordered_map<u32, voxel_grid_t> vgrids;
 
   return create_window("WoW Clone :D", false)
       .register_callback(glfwSetCursorPosCallback, mouse_callback)
@@ -139,42 +138,52 @@ main(i32 argc, char** argv) -> i32
             debug_overlay_t::init(_window, game_renderer.game_camera);
 
             game_renderer.update_frame_buffer(_window);
-            game_renderer.model_renderer.add_model("dungeon", "../data/untitled.obj");
+            game_renderer.model_renderer.add_model("dungeon", "../data/duskwoodchapel.obj");
             // tree.generate(game_renderer.model_renderer.static_world_models.at("dungeon").draw_model.meshes);
 
-            WavefrontObj new_obj;
-            new_obj.loadObj("../data/untitled.obj");
+            // WavefrontObj new_obj;
+            // new_obj.loadObj("../data/untitled.obj");
 
-            std::vector<triangle_t> tris{};
+            // std::vector<triangle_t> tris{};
 
-            LOG(INFO) << " new_obj.mTriCount: " << new_obj.mTriCount;
-            LOG(INFO) << " new_obj.mVertexCount: " << new_obj.mVertexCount;
-            new_obj.saveCPP("funny_output.hh");
+            // LOG(INFO) << " new_obj.mTriCount: " << new_obj.mTriCount;
+            // LOG(INFO) << " new_obj.mVertexCount: " << new_obj.mVertexCount;
+            // new_obj.saveCPP("funny_output.hh");
 
-            for (usize i = 0; i < ((new_obj.mTriCount - 3) * 3); i += 9)
+            // for (usize i = 0; i < ((new_obj.mTriCount - 3) * 3); i += 9)
+            // {
+            //   LOG(INFO) << "i: " << i;
+            //   auto a = glm::vec3{new_obj.mVertices[new_obj.mIndices[i]],      //
+            //                      new_obj.mVertices[new_obj.mIndices[i + 1]],  //
+            //                      new_obj.mVertices[new_obj.mIndices[i + 2]]}; //
+
+            //   auto b = glm::vec3{new_obj.mVertices[new_obj.mIndices[i + 3]],  //
+            //                      new_obj.mVertices[new_obj.mIndices[i + 4]],  //
+            //                      new_obj.mVertices[new_obj.mIndices[i + 5]]}; //
+
+            //   auto c = glm::vec3{new_obj.mVertices[new_obj.mIndices[i + 6]],  //
+            //                      new_obj.mVertices[new_obj.mIndices[i + 7]],  //
+            //                      new_obj.mVertices[new_obj.mIndices[i + 8]]}; //
+
+            //   tris.push_back({a, b, c});
+            // }
+
+            // LOG(INFO) << "lamo " << tris.size();
+
+            for (const auto& mesh : game_renderer.model_renderer.static_world_models.at("dungeon").draw_model.meshes)
             {
-              LOG(INFO) << "i: " << i;
-              auto a = glm::vec3{new_obj.mVertices[new_obj.mIndices[i]],      //
-                                 new_obj.mVertices[new_obj.mIndices[i + 1]],  //
-                                 new_obj.mVertices[new_obj.mIndices[i + 2]]}; //
+              std::vector<triangle_t> tris;
 
-              auto b = glm::vec3{new_obj.mVertices[new_obj.mIndices[i + 3]],  //
-                                 new_obj.mVertices[new_obj.mIndices[i + 4]],  //
-                                 new_obj.mVertices[new_obj.mIndices[i + 5]]}; //
+              for (usize i = 0; i < mesh.indices.size() - 4; i += 3)
+              {
+                tris.push_back({glm::vec3{mesh.vertices[mesh.indices[i]].position}, glm::vec3{mesh.vertices[mesh.indices[i + 1]].position},
+                                glm::vec3{mesh.vertices[mesh.indices[i + 2]].position}});
+              }
+              LOG(INFO) << "generating done mesh!";
 
-              auto c = glm::vec3{new_obj.mVertices[new_obj.mIndices[i + 6]],  //
-                                 new_obj.mVertices[new_obj.mIndices[i + 7]],  //
-                                 new_obj.mVertices[new_obj.mIndices[i + 8]]}; //
-
-              tris.push_back({a, b, c});
+              vgrids[mesh.VAO].setup(20, 20, 20);
+              vgrids[mesh.VAO].generate(mesh.bbox, tris, tris.size());
             }
-
-            LOG(INFO) << "lamo " << tris.size();
-            auto box = game_renderer.model_renderer.static_world_models.at("dungeon").draw_model.meshes.at(0).bbox;
-            LOG(INFO) << "wtf" << box.mMin.x;
-            LOG(INFO) << box.mMax.x;
-            vgrid.setup(20, 20, 20);
-            vgrid.generate(box, tris, tris.size());
           })
       .loop(
           [&](GLFWwindow* _window)
@@ -194,23 +203,12 @@ main(i32 argc, char** argv) -> i32
 
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-            // for (auto& model : game_renderer.model_renderer.static_world_models)
-            // {
-            //   draw_tree_recursive(tree.root);
-
-            //   for (const auto& mesh : model.second.draw_model.meshes)
-            //   {
-            //     if (sub_hulls[mesh.VAO].points.empty())
-            //     {
-            //       sub_hulls[mesh.VAO].load(mesh);
-            //     }
-            //     sub_hulls[mesh.VAO].to_submeshes();
-            //   }
-            // }
-
             auto collision_meshes = tree.find(game_renderer.game_camera.vec_position);
 
-            vgrid.draw();
+            for (const auto& vgrid : vgrids)
+            {
+              vgrid.second.draw();
+            }
 
             glPointSize(5);
 

@@ -13,6 +13,7 @@
 #include <base_engine/physics_system/mesh_collider.h>
 #include <base_engine/debug/debug_overlay.h>
 #include <base_engine/physics_system/bbox.h>
+#include <base_engine/physics_system/intersect.h>
 #include <vhacd/wavefront.h>
 #include <qms/Simplify.h>
 
@@ -285,4 +286,129 @@ convex_hull_t::simplify()
   }
 
   return true;
+}
+
+u0
+voxel_grid_t::setup(usize _count_rows, usize _count_columns, usize _count_stories)
+{
+  count_rows    = _count_rows;
+  count_columns = _count_columns;
+  count_stories = _count_stories;
+  // mental health: 90%
+  grid.resize(_count_stories);
+  for (auto& column : grid)
+  {
+    column.resize(_count_columns);
+    for (auto& row : column)
+    {
+      row.resize(_count_rows);
+    }
+  }
+  // mental health: 85%
+}
+
+u0
+voxel_grid_t::generate(const aabb_t& _bbox, const std::vector<triangle_t>& _triangles, usize _tri_count)
+{
+  bbox = std::move(_bbox);
+  std::deque<triangle_t> tris;
+
+  for (const auto& tri : _triangles)
+  {
+    tris.push_back(tri);
+  }
+
+  // rows
+  f32 box_x_len = bbox.max.x - bbox.min.x;
+  // stories
+  f32 box_y_len = bbox.max.y - bbox.min.y;
+  // columns
+  f32 box_z_len = bbox.max.z - bbox.min.z;
+
+  const f32 voxel_story_length  = box_y_len / count_stories;
+  const f32 voxel_column_length = box_z_len / count_columns;
+  const f32 voxel_row_length    = box_x_len / count_rows;
+
+  // TODO: use triangles instead of points
+
+  // mental health: 87% got some coffee :D
+  usize story_index{0};
+  for (const auto& stories : grid)
+  {
+    usize column_index{0};
+    for (const auto& column : stories)
+    {
+      usize row_index{0};
+      for (const auto& row : column)
+      {
+        // mental health: 74%
+        auto voxel_min = bbox.min + glm::vec3{voxel_row_length * (f32)row_index, voxel_story_length * (f32)story_index,
+                                              voxel_column_length * (f32)column_index};
+
+        auto voxel_max = bbox.min + glm::vec3{voxel_row_length * (f32)(row_index + 1), voxel_story_length * (f32)(story_index + 1),
+                                              voxel_column_length * (f32)(column_index + 1)};
+
+        aabb_t current_voxel{voxel_min, voxel_max};
+
+        for (auto& tri : tris)
+        {
+
+          /* % of the triangle that has to be inside of the box to count */
+          if (isect_tri_aabb(tri, current_voxel))
+          {
+            grid[story_index][column_index][row_index] = true;
+            // mental health: 32%
+          }
+        }
+        ++row_index;
+      }
+      ++column_index;
+    }
+    ++story_index;
+  }
+}
+
+u0
+voxel_grid_t::draw() const
+{
+  // rows
+  f32 box_x_len = bbox.max.x - bbox.min.x;
+  // stories
+  f32 box_y_len = bbox.max.y - bbox.min.y;
+  // columns
+  f32 box_z_len = bbox.max.z - bbox.min.z;
+
+  const f32 voxel_story_length  = box_y_len / count_stories;
+  const f32 voxel_column_length = box_z_len / count_columns;
+  const f32 voxel_row_length    = box_x_len / count_rows;
+
+  usize story_index{0};
+  for (const auto& stories : grid)
+  {
+    usize column_index{0};
+    for (const auto& column : stories)
+    {
+      usize row_index{0};
+      for (const auto& row : column)
+      {
+
+        auto voxel_min = bbox.min + glm::vec3{voxel_row_length * (f32)row_index, voxel_story_length * (f32)story_index,
+                                              voxel_column_length * (f32)column_index};
+
+        auto voxel_max = bbox.min + glm::vec3{voxel_row_length * (f32)(row_index + 1), voxel_story_length * (f32)(story_index + 1),
+                                              voxel_column_length * (f32)(column_index + 1)};
+
+        aabb_t current_voxel{voxel_min, voxel_max};
+
+        if (row)
+        {
+          debug_overlay_t::draw_AABB(current_voxel.min, current_voxel.max, 0xf4f4f4ff, false);
+        }
+
+        ++row_index;
+      }
+      ++column_index;
+    }
+    ++story_index;
+  }
 }

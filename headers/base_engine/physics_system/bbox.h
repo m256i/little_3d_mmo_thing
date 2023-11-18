@@ -86,6 +86,11 @@ struct aabb_t
   {
     return ((max - min) / 2.f);
   }
+  glm::vec3
+  get_extents()
+  {
+    return ((max - min));
+  }
 };
 
 struct debug_bbox_t
@@ -148,10 +153,9 @@ struct debug_bbox_t
   void
   load_from_mesh(const aiAABB& _bbox)
   {
-    glm::vec3 scalingFactors =
-        glm::vec3{_bbox.mMax.x - _bbox.mMin.x, _bbox.mMax.y - _bbox.mMin.y, _bbox.mMax.z - _bbox.mMin.z} / 2.0f;
-    glm::vec3 center = glm::vec3{(_bbox.mMax.x + _bbox.mMin.x) / 2.f, (_bbox.mMax.y + _bbox.mMin.y) / 2.f,
-                                 (_bbox.mMax.z + _bbox.mMin.z) / 2.f};
+    glm::vec3 scalingFactors = glm::vec3{_bbox.mMax.x - _bbox.mMin.x, _bbox.mMax.y - _bbox.mMin.y, _bbox.mMax.z - _bbox.mMin.z} / 2.0f;
+    glm::vec3 center =
+        glm::vec3{(_bbox.mMax.x + _bbox.mMin.x) / 2.f, (_bbox.mMax.y + _bbox.mMin.y) / 2.f, (_bbox.mMax.z + _bbox.mMin.z) / 2.f};
 
     for (int i = 0; i < 8; i++)
     {
