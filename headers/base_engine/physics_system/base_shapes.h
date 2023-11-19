@@ -10,8 +10,10 @@
 #include <limits>
 
 #include <base_engine/physics_system/bbox.h>
+#include <glm/matrix.hpp>
 
 #include "../../../common.h"
+#include "glm/ext/quaternion_geometric.hpp"
 
 struct triangle_t
 {
@@ -61,5 +63,34 @@ struct triangle_t
     lowest_z = std::min({_tri.a.z, _tri.b.z, _tri.c.z});
 
     return aabb_t{glm::vec3{lowest_x, lowest_y, lowest_z}, glm::vec3{highest_x, highest_y, highest_z}};
+  }
+
+  auto
+  normal()
+  {
+    return glm::normalize(glm::cross(b - a, c - a));
+  }
+
+  float
+  get_alignment() const
+  {
+    // Calculate the transformation matrix from the local space to world space.
+    glm::mat4 transform = glm::mat4(1.0f);
+    transform[0]        = glm::vec4(glm::normalize(edge0()), 0.0f);
+    transform[1]        = glm::vec4(glm::normalize(edge1()), 0.0f);
+    transform[2]        = glm::vec4(glm::normalize(edge2()), 0.0f);
+
+    // Extract the rotation part of the matrix.
+    glm::mat3 rotationMatrix = glm::mat3(transform);
+
+    // Calculate the dot product of each world axis with the triangle normal.
+    float alignmentX = glm::dot(rotationMatrix[0], glm::vec3(1.0f, 0.0f, 0.0f));
+    float alignmentY = glm::dot(rotationMatrix[1], glm::vec3(0.0f, 1.0f, 0.0f));
+    float alignmentZ = glm::dot(rotationMatrix[2], glm::vec3(0.0f, 0.0f, 1.0f));
+
+    // Calculate the overall alignment as the average of the dot products.
+    float overallAlignment = (alignmentX + alignmentY + alignmentZ) / 3.0f;
+
+    return overallAlignment;
   }
 };

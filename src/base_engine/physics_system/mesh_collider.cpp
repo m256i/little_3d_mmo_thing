@@ -48,11 +48,7 @@ recursive_subdivide(tree_node_t& _current_node, const std::vector<mesh_t>& _mesh
     }
     else if (chull_overlaps_bbox(ch, _current_node.bbox))
     {
-      // TODO potentioannly unneeded
-      // if (point_inside_bbox(_current_node.bbox, chull_bbox_collision_center(ch, _current_node.bbox)))
-      // {
       meshes_inside.push_back(pmesh);
-      // }
     }
   }
 
@@ -77,10 +73,10 @@ recursive_subdivide(tree_node_t& _current_node, const std::vector<mesh_t>& _mesh
 
   usize unique_counter = 0;
   {
-    auto hash  = [](const glm::vec3& n) { return (n.x * 3 + n.y * 5 + n.z * 17); };
-    auto equal = [](const glm::vec3& l, const glm::vec3& r) { return l == r; };
+    constexpr auto hash  = [](const glm::vec3& n) { return (n.x * 3 + n.y * 5 + n.z * 17); };
+    constexpr auto equal = [](const glm::vec3& l, const glm::vec3& r) { return l == r; };
 
-    std::unordered_map<glm::vec3, int, decltype(hash), decltype(equal)> centers{};
+    std::unordered_map<glm::vec3, u32, decltype(hash), decltype(equal)> centers{};
     for (const auto& ite : meshes_inside)
     {
       convex_hull_t ch{};
@@ -148,7 +144,7 @@ bool
 partial_spacial_tree_t::generate(std::vector<mesh_t>& _meshes)
 {
   /* find coords and sizes for all covering bboc */
-  glm::vec3 min{FLT_MAX, FLT_MAX, FLT_MAX}, max{0.f, 0.f, 0.f};
+  glm::vec3 min{FLT_MAX, FLT_MAX, FLT_MAX}, max{FLT_MIN, FLT_MIN, FLT_MIN};
 
   std::vector<aabb_t> out{};
 

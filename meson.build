@@ -38,7 +38,7 @@ executable(
   [sources],
   include_directories : [include_path, headers_path],
   dependencies : [],
-  cpp_args : ['-O3','-march=native', '-fno-math-errno', '-fno-rtti', '-fno-exceptions', useless_warnings],
+  cpp_args : ['-O3', '-g','-march=native', '-fno-math-errno', '-fno-rtti', '-fno-exceptions', useless_warnings],
   link_args : ['-lassimp-vc143-mt', '-lopengl32', '-lglfw3', '-L' + lib_path],
   install : true
 )

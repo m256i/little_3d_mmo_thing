@@ -1,4 +1,7 @@
+#include "glm/ext/scalar_constants.hpp"
 #include <deque>
+#include <limits>
+#include <numeric>
 #define ENABLE_VHACD_IMPLEMENTATION 1
 #include <vhacd/VHACD.h>
 
@@ -307,6 +310,149 @@ voxel_grid_t::setup(usize _count_rows, usize _count_columns, usize _count_storie
   // mental health: 85%
 }
 
+// TODO: we want cuboids not big weird shapes lol
+void
+expand_by_one(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid, usize _story_index, usize _column_index, usize _row_index,
+              usize& current_size, usize& _min_story_index, usize& _min_column_index, usize& _min_row_index, usize& _max_story_index,
+              usize& _max_column_index, usize& _max_row_index)
+{
+  LOG(INFO) << "new expand_by_one() _story_index: " << _story_index << " _column_index: " << _column_index << " _row_index" << _row_index;
+
+  if (_story_index >= _grid.size())
+  {
+    LOG(INFO) << "hit end!";
+    return;
+  }
+
+  if (_column_index >= _grid[0].size())
+  {
+    LOG(INFO) << "hit end!";
+    return;
+  }
+
+  if (_row_index >= _grid[0][0].size())
+  {
+    LOG(INFO) << "hit end!";
+    return;
+  }
+
+  if (_grid[_story_index][_column_index][_row_index].visited)
+  {
+    LOG(INFO) << "already seen";
+    return;
+  }
+
+  if (!_grid[_story_index][_column_index][_row_index].on)
+  {
+    LOG(INFO) << "hit off block!";
+    return;
+  }
+
+  current_size++;
+  _grid[_story_index][_column_index][_row_index].visited = true;
+
+  _min_story_index  = mmin(_min_story_index, _story_index);
+  _min_column_index = mmin(_min_column_index, _column_index);
+  _min_row_index    = mmin(_min_row_index, _row_index);
+
+  _max_story_index  = mmax(_max_story_index, _story_index);
+  _max_column_index = mmax(_max_column_index, _column_index);
+  _max_row_index    = mmax(_max_row_index, _row_index);
+
+  // clang-format off
+  expand_by_one(_grid, 
+      _story_index, _column_index, _row_index + 1, 
+    current_size, 
+  _min_story_index, _min_column_index, _min_row_index,
+  _max_story_index, _max_column_index, _max_row_index);
+
+  if (_row_index >= 1)
+  {
+    expand_by_one(_grid, 
+        _story_index, _column_index, _row_index - 1, 
+      current_size, 
+    _min_story_index, _min_column_index, _min_row_index,
+    _max_story_index, _max_column_index, _max_row_index);
+  }
+
+  expand_by_one(_grid, 
+      _story_index, _column_index + 1, _row_index, 
+    current_size, 
+  _min_story_index, _min_column_index, _min_row_index,
+  _max_story_index, _max_column_index, _max_row_index);
+
+  if (_column_index >= 1)
+  {
+    expand_by_one(_grid, 
+        _story_index, _column_index - 1, _row_index, 
+      current_size, 
+    _min_story_index, _min_column_index, _min_row_index,
+    _max_story_index, _max_column_index, _max_row_index);
+  }
+
+  expand_by_one(_grid, 
+      _story_index + 1, _column_index, _row_index, 
+    current_size, 
+  _min_story_index, _min_column_index, _min_row_index,
+  _max_story_index, _max_column_index, _max_row_index);
+
+  if (_story_index >= 1)
+  {
+    expand_by_one(_grid, 
+        _story_index - 1, _column_index, _row_index, 
+      current_size, 
+    _min_story_index, _min_column_index, _min_row_index,
+    _max_story_index, _max_column_index, _max_row_index);
+    // clang-format on
+  }
+}
+
+std::pair<aabb_t, usize>
+fint_largest_suub_cuboid(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid)
+{
+  static constexpr auto flt_min = std::numeric_limits<f32>::min();
+  static constexpr auto flt_max = std::numeric_limits<f32>::max();
+
+  static constexpr auto usize_min = std::numeric_limits<usize>::min();
+  static constexpr auto usize_max = std::numeric_limits<usize>::max();
+
+  aabb_t biggest{};
+  usize biggest_current{usize_min};
+
+  usize story_index{0};
+  for (auto& stories : _grid)
+  {
+    usize column_index{0};
+    for (auto& column : stories)
+    {
+      usize row_index{0};
+      for (auto& row : column)
+      {
+        if (!row.visited)
+        {
+          usize size = 0, min_story_id{usize_max}, min_column_id{usize_max}, min_row_id{usize_max}, max_story_id{usize_min},
+                max_column_id{usize_min}, max_row_id{usize_min};
+
+          expand_by_one(_grid, story_index, column_index, row_index, size, min_story_id, min_column_id, min_row_id, max_story_id,
+                        max_column_id, max_row_id);
+
+          LOG(INFO) << "lolaz! size: " << size;
+
+          if (size > biggest_current)
+          {
+            biggest_current = size;
+            biggest = {_grid[min_story_id][min_column_id][min_row_id].to_vec(), _grid[max_story_id][max_column_id][max_row_id].to_vec()};
+          }
+        }
+        ++row_index;
+      }
+      ++column_index;
+    }
+    ++story_index;
+  }
+  return {biggest, biggest_current};
+}
+
 u0
 voxel_grid_t::generate(const aabb_t& _bbox, const std::vector<triangle_t>& _triangles, usize _tri_count)
 {
@@ -350,13 +496,22 @@ voxel_grid_t::generate(const aabb_t& _bbox, const std::vector<triangle_t>& _tria
 
         aabb_t current_voxel{voxel_min, voxel_max};
 
+        grid[story_index][column_index][row_index].x = voxel_min.x;
+        grid[story_index][column_index][row_index].y = voxel_min.y;
+        grid[story_index][column_index][row_index].z = voxel_min.z;
+
         for (auto& tri : tris)
         {
 
           /* % of the triangle that has to be inside of the box to count */
           if (isect_tri_aabb(tri, current_voxel))
           {
-            grid[story_index][column_index][row_index] = true;
+            static constexpr auto rad_to_deg = [](f32 _rad) { return _rad * 180 / glm::pi<f32>(); };
+
+            auto& cur_block = grid[story_index][column_index][row_index];
+            cur_block.on    = true;
+            cur_block.count++;
+            cur_block.angles.push_back(std::fabsf(tri.get_alignment()));
             // mental health: 32%
           }
         }
@@ -366,6 +521,10 @@ voxel_grid_t::generate(const aabb_t& _bbox, const std::vector<triangle_t>& _tria
     }
     ++story_index;
   }
+
+  auto min_max = fint_largest_suub_cuboid(grid);
+
+  biggest_subcuboid = min_max.first;
 }
 
 u0
@@ -400,7 +559,7 @@ voxel_grid_t::draw() const
 
         aabb_t current_voxel{voxel_min, voxel_max};
 
-        if (row)
+        if (row.on)
         {
           debug_overlay_t::draw_AABB(current_voxel.min, current_voxel.max, 0xf4f4f4ff, false);
         }
@@ -411,4 +570,6 @@ voxel_grid_t::draw() const
     }
     ++story_index;
   }
+
+  debug_overlay_t::draw_AABB(biggest_subcuboid.min, biggest_subcuboid.max, 0xff0101ff, true);
 }

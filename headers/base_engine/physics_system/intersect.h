@@ -77,6 +77,7 @@ bbox_bbox_collision_center(const aabb_t& _a, const aabb_t& _b) -> glm::vec3
 
   // Calculate the center of the overlap area
   glm::vec3 overlap_center;
+
   overlap_center.x = mmax(_a.min.x, _b.min.x) + overlap_x / 2.0f;
   overlap_center.y = mmax(_a.min.y, _b.min.y) + overlap_y / 2.0f;
   overlap_center.z = mmax(_a.min.z, _b.min.z) + overlap_z / 2.0f;
@@ -116,14 +117,13 @@ chull_bbox_collision_center(const convex_hull_t& _hull, const aabb_t& _b) -> glm
 inline auto
 bbox_overlaps_bbox(const aabb_t& _a, const aabb_t& _b) -> bool
 {
-  if (_a.max.x < _b.min.x || _a.min.x > _b.max.x) return false; // No overlap in the X-axis
-  if (_a.max.y < _b.min.y || _a.min.y > _b.max.y) return false; // No overlap in the Y-axis
-  if (_a.max.z < _b.min.z || _a.min.z > _b.max.z) return false; // No overlap in the Z-axis
+  if (_a.max.x < _b.min.x || _a.min.x > _b.max.x) return false;
+  if (_a.max.y < _b.min.y || _a.min.y > _b.max.y) return false;
+  if (_a.max.z < _b.min.z || _a.min.z > _b.max.z) return false;
 
   return true;
 }
 
-// TODO FIX
 inline auto
 chull_overlaps_bbox(const convex_hull_t& _hull, const aabb_t& _bb) -> bool
 {
@@ -144,7 +144,7 @@ point_inside_bbox(const aabb_t& _box, const glm::vec3& _point) -> bool
          (_point.x <= _box.max.x && _point.y <= _box.max.y && _point.z <= _box.max.z);
 }
 
-// we can assume ccw orientation so we can use points sequential to each other
+// we can assume ccw orientation so we can use points next to each other
 inline auto
 point_inside_chull(const glm::vec3& _point, const convex_hull_t _chull)
 {
