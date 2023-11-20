@@ -19,6 +19,7 @@ struct voxel_block_t
   aabb_t bbox{};
   std::vector<triangle_t> triangles_inside{};
   usize count{};
+  bool visited{};
   bool on{};
 };
 

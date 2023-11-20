@@ -152,3 +152,289 @@ voxel_grid_t::find(const glm::vec3& _position)
 
   return &grid[story_index][column_index][row_index];
 }
+
+template <char TAxis>
+inline u0
+test_dimension(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid, usize _story_index, usize _column_index, usize _row_index,
+               usize& current_size, usize& _min_story_index, usize& _min_column_index, usize& _min_row_index, usize& _max_story_index,
+               usize& _max_column_index, usize& _max_row_index)
+{
+  LOG(INFO) << "new expand_by_one() _story_index: " << _story_index << " _column_index: " << _column_index << " _row_index" << _row_index;
+
+  if constexpr (TAxis == 'y')
+  {
+    if (_story_index >= _grid.size())
+    {
+      LOG(INFO) << "hit end!";
+      return;
+    }
+  }
+  else if constexpr (TAxis == 'z')
+  {
+    if (_column_index >= _grid[0].size())
+    {
+      LOG(INFO) << "hit end!";
+      return;
+    }
+  }
+  else if constexpr (TAxis == 'x')
+  {
+    if (_row_index >= _grid[0][0].size())
+    {
+      LOG(INFO) << "hit end!";
+      return;
+    }
+  }
+
+  if (_grid[_story_index][_column_index][_row_index].visited)
+  {
+    LOG(INFO) << "already seen";
+    return;
+  }
+
+  if (!_grid[_story_index][_column_index][_row_index].on)
+  {
+    LOG(INFO) << "hit off block!";
+    return;
+  }
+
+  current_size++;
+
+  _grid[_story_index][_column_index][_row_index].visited = true;
+
+  if constexpr (TAxis == 'y')
+  {
+    _min_story_index = mmin(_min_story_index, _story_index);
+  }
+  else if constexpr (TAxis == 'z')
+  {
+    _min_column_index = mmin(_min_column_index, _column_index);
+  }
+  else if constexpr (TAxis == 'x')
+  {
+    _min_row_index = mmin(_min_row_index, _row_index);
+  }
+
+  if constexpr (TAxis == 'y')
+  {
+    _max_story_index = mmax(_max_story_index, _story_index);
+  }
+  else if constexpr (TAxis == 'z')
+  {
+    _max_column_index = mmax(_max_column_index, _column_index);
+  }
+  else if constexpr (TAxis == 'x')
+  {
+    _max_row_index = mmax(_max_row_index, _row_index);
+  }
+  // clang-format off
+
+  
+  if constexpr (TAxis == 'x')
+  {
+    expand_by_one(_grid, 
+        _story_index, _column_index, _row_index + 1, 
+      current_size, 
+    _min_story_index, _min_column_index, _min_row_index,
+    _max_story_index, _max_column_index, _max_row_index);
+
+    if (_row_index >= 1)
+    {
+      expand_by_one(_grid, 
+          _story_index, _column_index, _row_index - 1, 
+        current_size, 
+      _min_story_index, _min_column_index, _min_row_index,
+      _max_story_index, _max_column_index, _max_row_index);
+    }
+  }
+  else if constexpr (TAxis == 'z')
+  {
+    expand_by_one(_grid, 
+        _story_index, _column_index + 1, _row_index, 
+      current_size, 
+    _min_story_index, _min_column_index, _min_row_index,
+    _max_story_index, _max_column_index, _max_row_index);
+
+    if (_column_index >= 1)
+    {
+      expand_by_one(_grid, 
+          _story_index, _column_index - 1, _row_index, 
+        current_size, 
+      _min_story_index, _min_column_index, _min_row_index,
+      _max_story_index, _max_column_index, _max_row_index);
+    }
+  }
+  else if constexpr (TAxis == 'y')
+  {
+    expand_by_one(_grid, 
+        _story_index + 1, _column_index, _row_index, 
+      current_size, 
+    _min_story_index, _min_column_index, _min_row_index,
+    _max_story_index, _max_column_index, _max_row_index);
+
+    if (_story_index >= 1)
+    {
+      expand_by_one(_grid, 
+          _story_index - 1, _column_index, _row_index, 
+        current_size, 
+      _min_story_index, _min_column_index, _min_row_index,
+      _max_story_index, _max_column_index, _max_row_index);
+        // clang-format on
+    }
+  }
+}
+
+inline u0
+expand_by_one(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid, usize _story_index, usize _column_index, usize _row_index,
+              usize& current_size, usize& _min_story_index, usize& _min_column_index, usize& _min_row_index, usize& _max_story_index,
+              usize& _max_column_index, usize& _max_row_index)
+{
+  LOG(INFO) << "new expand_by_one() _story_index: " << _story_index << " _column_index: " << _column_index << " _row_index" << _row_index;
+
+  if (_story_index >= _grid.size())
+  {
+    LOG(INFO) << "hit end!";
+    return;
+  }
+
+  if (_column_index >= _grid[0].size())
+  {
+    LOG(INFO) << "hit end!";
+    return;
+  }
+
+  if (_row_index >= _grid[0][0].size())
+  {
+    LOG(INFO) << "hit end!";
+    return;
+  }
+
+  if (_grid[_story_index][_column_index][_row_index].visited)
+  {
+    LOG(INFO) << "already seen";
+    return;
+  }
+
+  if (!_grid[_story_index][_column_index][_row_index].on)
+  {
+    LOG(INFO) << "hit off block!";
+    return;
+  }
+
+  current_size++;
+  _grid[_story_index][_column_index][_row_index].visited = true;
+
+  _min_story_index  = mmin(_min_story_index, _story_index);
+  _min_column_index = mmin(_min_column_index, _column_index);
+  _min_row_index    = mmin(_min_row_index, _row_index);
+
+  _max_story_index  = mmax(_max_story_index, _story_index);
+  _max_column_index = mmax(_max_column_index, _column_index);
+  _max_row_index    = mmax(_max_row_index, _row_index);
+
+  // clang-format off
+  expand_by_one(_grid, 
+      _story_index, _column_index, _row_index + 1, 
+    current_size, 
+  _min_story_index, _min_column_index, _min_row_index,
+  _max_story_index, _max_column_index, _max_row_index);
+
+  if (_row_index >= 1)
+  {
+    expand_by_one(_grid, 
+        _story_index, _column_index, _row_index - 1, 
+      current_size, 
+    _min_story_index, _min_column_index, _min_row_index,
+    _max_story_index, _max_column_index, _max_row_index);
+  }
+
+  expand_by_one(_grid, 
+      _story_index, _column_index + 1, _row_index, 
+    current_size, 
+  _min_story_index, _min_column_index, _min_row_index,
+  _max_story_index, _max_column_index, _max_row_index);
+
+  if (_column_index >= 1)
+  {
+    expand_by_one(_grid, 
+        _story_index, _column_index - 1, _row_index, 
+      current_size, 
+    _min_story_index, _min_column_index, _min_row_index,
+    _max_story_index, _max_column_index, _max_row_index);
+  }
+
+  expand_by_one(_grid, 
+      _story_index + 1, _column_index, _row_index, 
+    current_size, 
+  _min_story_index, _min_column_index, _min_row_index,
+  _max_story_index, _max_column_index, _max_row_index);
+
+  if (_story_index >= 1)
+  {
+    expand_by_one(_grid, 
+        _story_index - 1, _column_index, _row_index, 
+      current_size, 
+    _min_story_index, _min_column_index, _min_row_index,
+    _max_story_index, _max_column_index, _max_row_index);
+    // clang-format on
+  }
+}
+
+inline std::pair<aabb_t, usize>
+fint_largest_sub_cuboid(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid)
+{
+  static constexpr auto flt_min = std::numeric_limits<f32>::min();
+  static constexpr auto flt_max = std::numeric_limits<f32>::max();
+
+  static constexpr auto usize_min = std::numeric_limits<usize>::min();
+  static constexpr auto usize_max = std::numeric_limits<usize>::max();
+
+  aabb_t biggest{};
+  usize biggest_current{usize_min};
+
+  std::vector<std::vector<std::vector<glm::vec3>>> sizes_grid{};
+  
+  sizes_grid.resize(_grid.size());
+  for (auto& col : _grid)
+  {
+    col.resize(_grid[0].size());
+    for (auto& row : col)
+    {
+      row.resize(_grid[0][0].size());
+    }
+  }
+
+  usize story_index{0};
+  for (auto& stories : _grid)
+  {
+    usize column_index{0};
+    for (auto& column : stories)
+    {
+      usize row_index{0};
+      for (auto& row : column)
+      {
+        if (!row.visited)
+        {
+          usize size = 0, min_story_id{usize_max}, min_column_id{usize_max}, min_row_id{usize_max}, max_story_id{usize_min},
+                max_column_id{usize_min}, max_row_id{usize_min};
+
+          
+          expand_by_one(_grid, story_index, column_index, row_index, size, min_story_id, min_column_id, min_row_id, max_story_id,
+                        max_column_id, max_row_id);
+
+          LOG(INFO) << "lolaz! size: " << size;
+
+          if (size > biggest_current)
+          {
+            biggest_current = size;
+            biggest = {_grid[min_story_id][min_column_id][min_row_id].bbox.min, _grid[max_story_id][max_column_id][max_row_id].bbox.max};
+          }
+        }
+        ++row_index;
+      }
+      ++column_index;
+    }
+    ++story_index;
+  }
+  return {biggest, biggest_current};
+}
