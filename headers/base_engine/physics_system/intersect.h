@@ -2,6 +2,7 @@
 
 #include <base_engine/physics_system/bbox.h>
 #include <base_engine/physics_system/base_shapes.h>
+#include <base_engine/physics_system/mesh_chunking.h>
 #include <base_engine/physics_system/chull.h>
 
 #include <glm/glm.hpp>

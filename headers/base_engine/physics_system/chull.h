@@ -30,35 +30,3 @@ struct convex_hull_t
   bool to_submeshes();
   bool simplify();
 };
-
-struct voxel_block_t
-{
-  voxel_block_t() = default;
-  voxel_block_t(f32 _x, f32 _y, f32 _z, bool _vis) : x(_x), y(_y), z(_z), visited(_vis) {}
-  voxel_block_t(f32 _x, f32 _y, f32 _z) : x(_x), y(_y), z(_z) {}
-
-  glm::vec3
-  to_vec() const
-  {
-    return glm::vec3{x, y, z};
-  }
-
-  f32 x, y, z;
-  bool on{};
-  std::vector<f32> angles{};
-  usize count{};
-  bool visited{};
-};
-
-struct voxel_grid_t
-{
-  aabb_t bbox;
-  usize count_rows{}, count_columns{}, count_stories{};
-  aabb_t biggest_subcuboid{};
-
-  std::vector<std::vector<std::vector<voxel_block_t>>> grid;
-
-  u0 setup(usize _count_rows, usize _count_columns, usize _count_stories);
-  u0 generate(const aabb_t& _bbox, const std::vector<triangle_t>& _triangles, usize _tri_count);
-  u0 draw() const;
-};
