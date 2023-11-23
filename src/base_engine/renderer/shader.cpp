@@ -14,8 +14,7 @@
 #include <glad/glad.h>
 
 bool
-basic_shader_t::load_from_path(std::string_view _vertex_path, std::string_view _frag_path,
-                               const char *_geo_path)
+basic_shader_t::load_from_path(std::string_view _vertex_path, std::string_view _frag_path, const char *_geo_path)
 {
   bool status = true;
   std::string vertex_code, frag_code, geo_code;
@@ -28,8 +27,10 @@ basic_shader_t::load_from_path(std::string_view _vertex_path, std::string_view _
 
   vert_shader_stream << vert_shader_file.rdbuf();
   frag_shader_stream << frag_shader_file.rdbuf();
+
   vert_shader_file.close();
   frag_shader_file.close();
+
   vertex_code = vert_shader_stream.str();
   frag_code   = frag_shader_stream.str();
 
@@ -128,4 +129,4 @@ basic_shader_t::load_from_path(std::string_view _vertex_path, std::string_view _
   LOG(INFO) << "[shader] : shader " << debug_name << " loaded successfully";
   return true;
 }
-// 
+//

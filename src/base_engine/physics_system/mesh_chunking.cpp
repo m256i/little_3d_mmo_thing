@@ -156,8 +156,7 @@ voxel_grid_t::find(const glm::vec3& _position)
 template <char TAxis>
 inline u0
 test_dimension(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid, usize _story_index, usize _column_index, usize _row_index,
-               usize& current_size, usize& _min_story_index, usize& _min_column_index, usize& _min_row_index, usize& _max_story_index,
-               usize& _max_column_index, usize& _max_row_index)
+               usize& current_size)
 {
   LOG(INFO) << "new expand_by_one() _story_index: " << _story_index << " _column_index: " << _column_index << " _row_index" << _row_index;
 
@@ -186,11 +185,11 @@ test_dimension(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid, usiz
     }
   }
 
-  if (_grid[_story_index][_column_index][_row_index].visited)
-  {
-    LOG(INFO) << "already seen";
-    return;
-  }
+  // if (_grid[_story_index][_column_index][_row_index].visited)
+  // {
+  //   LOG(INFO) << "already seen";
+  //   return;
+  // }
 
   if (!_grid[_story_index][_column_index][_row_index].on)
   {
@@ -200,88 +199,55 @@ test_dimension(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid, usiz
 
   current_size++;
 
-  _grid[_story_index][_column_index][_row_index].visited = true;
-
-  if constexpr (TAxis == 'y')
-  {
-    _min_story_index = mmin(_min_story_index, _story_index);
-  }
-  else if constexpr (TAxis == 'z')
-  {
-    _min_column_index = mmin(_min_column_index, _column_index);
-  }
-  else if constexpr (TAxis == 'x')
-  {
-    _min_row_index = mmin(_min_row_index, _row_index);
-  }
-
-  if constexpr (TAxis == 'y')
-  {
-    _max_story_index = mmax(_max_story_index, _story_index);
-  }
-  else if constexpr (TAxis == 'z')
-  {
-    _max_column_index = mmax(_max_column_index, _column_index);
-  }
-  else if constexpr (TAxis == 'x')
-  {
-    _max_row_index = mmax(_max_row_index, _row_index);
-  }
   // clang-format off
-
   
   if constexpr (TAxis == 'x')
   {
     expand_by_one(_grid, 
         _story_index, _column_index, _row_index + 1, 
-      current_size, 
-    _min_story_index, _min_column_index, _min_row_index,
-    _max_story_index, _max_column_index, _max_row_index);
-
+      current_size
+    );
     if (_row_index >= 1)
     {
       expand_by_one(_grid, 
           _story_index, _column_index, _row_index - 1, 
-        current_size, 
-      _min_story_index, _min_column_index, _min_row_index,
-      _max_story_index, _max_column_index, _max_row_index);
+        current_size
+      );
     }
   }
   else if constexpr (TAxis == 'z')
   {
     expand_by_one(_grid, 
         _story_index, _column_index + 1, _row_index, 
-      current_size, 
-    _min_story_index, _min_column_index, _min_row_index,
-    _max_story_index, _max_column_index, _max_row_index);
-
+      current_size
+    );
     if (_column_index >= 1)
     {
       expand_by_one(_grid, 
           _story_index, _column_index - 1, _row_index, 
-        current_size, 
-      _min_story_index, _min_column_index, _min_row_index,
-      _max_story_index, _max_column_index, _max_row_index);
+        current_size
+      );
     }
   }
   else if constexpr (TAxis == 'y')
   {
     expand_by_one(_grid, 
         _story_index + 1, _column_index, _row_index, 
-      current_size, 
-    _min_story_index, _min_column_index, _min_row_index,
-    _max_story_index, _max_column_index, _max_row_index);
-
+      current_size
+    );
     if (_story_index >= 1)
     {
       expand_by_one(_grid, 
           _story_index - 1, _column_index, _row_index, 
-        current_size, 
-      _min_story_index, _min_column_index, _min_row_index,
-      _max_story_index, _max_column_index, _max_row_index);
-        // clang-format on
+        current_size
+      );
     }
+    // clang-format on
   }
+
+#ifdef __clang__
+  __builtin_unreachable();
+#endif
 }
 
 inline u0
@@ -380,8 +346,78 @@ expand_by_one(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid, usize
   }
 }
 
-inline std::pair<aabb_t, usize>
-fint_largest_sub_cuboid(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid)
+struct Cuboid
+{
+  int xmin, xmax, ymin, ymax, zmin, zmax;
+};
+
+// Function to find the largest continuous connected cuboid in a 3D array of bools
+Cuboid
+findLargestCuboid(const std::vector<std::vector<std::vector<bool>>>& matrix)
+{
+  int M = matrix.size();
+  int N = matrix[0].size();
+  int K = matrix[0][0].size();
+
+  std::vector<std::vector<std::vector<bool>>> visited(M, std::vector<std::vector<bool>>(N, std::vector<bool>(K, false)));
+
+  Cuboid largestCuboid;
+  largestCuboid.xmin = largestCuboid.ymin = largestCuboid.zmin = -1;
+  largestCuboid.xmax = largestCuboid.ymax = largestCuboid.zmax = -1;
+  int maxCuboidSize                                            = 0;
+
+  // Depth-first search function to find the size of a connected cuboid from a given position
+  std::function<int(int, int, int)> dfs = [&](int x, int y, int z)
+  {
+    if (x < 0 || x >= M || y < 0 || y >= N || z < 0 || z >= K || !matrix[x][y][z] || visited[x][y][z])
+    {
+      return 0;
+    }
+
+    visited[x][y][z] = true;
+    int size         = 1;
+
+    if (x < largestCuboid.xmin || largestCuboid.xmin == -1) largestCuboid.xmin = x;
+    if (y < largestCuboid.ymin || largestCuboid.ymin == -1) largestCuboid.ymin = y;
+    if (z < largestCuboid.zmin || largestCuboid.zmin == -1) largestCuboid.zmin = z;
+    if (x > largestCuboid.xmax || largestCuboid.xmax == -1) largestCuboid.xmax = x;
+    if (y > largestCuboid.ymax || largestCuboid.ymax == -1) largestCuboid.ymax = y;
+    if (z > largestCuboid.zmax || largestCuboid.zmax == -1) largestCuboid.zmax = z;
+
+    size += dfs(x + 1, y, z);
+    size += dfs(x - 1, y, z);
+    size += dfs(x, y + 1, z);
+    size += dfs(x, y - 1, z);
+    size += dfs(x, y, z + 1);
+    size += dfs(x, y, z - 1);
+
+    return size;
+  };
+
+  // Iterate over all positions in the matrix and call dfs for unvisited true values
+  for (int i = 0; i < M; ++i)
+  {
+    for (int j = 0; j < N; ++j)
+    {
+      for (int k = 0; k < K; ++k)
+      {
+        if (matrix[i][j][k] && !visited[i][j][k])
+        {
+          int currentSize = dfs(i, j, k);
+          if (currentSize > maxCuboidSize)
+          {
+            maxCuboidSize = currentSize;
+          }
+        }
+      }
+    }
+  }
+
+  return largestCuboid;
+}
+
+std::pair<aabb_t, usize>
+voxel_grid_t::fint_largest_sub_cuboid(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid)
 {
   static constexpr auto flt_min = std::numeric_limits<f32>::min();
   static constexpr auto flt_max = std::numeric_limits<f32>::max();
@@ -392,49 +428,92 @@ fint_largest_sub_cuboid(std::vector<std::vector<std::vector<voxel_block_t>>>& _g
   aabb_t biggest{};
   usize biggest_current{usize_min};
 
-  std::vector<std::vector<std::vector<glm::vec3>>> sizes_grid{};
-  
-  sizes_grid.resize(_grid.size());
-  for (auto& col : _grid)
-  {
-    col.resize(_grid[0].size());
-    for (auto& row : col)
-    {
-      row.resize(_grid[0][0].size());
-    }
-  }
+  // std::vector<std::vector<std::vector<glm::vec3>>> sizes_grid{};
+
+  // sizes_grid.resize(_grid.size());
+  // for (auto& col : _grid)
+  // {
+  //   col.resize(_grid[0].size());
+  //   for (auto& row : col)
+  //   {
+  //     row.resize(_grid[0][0].size());
+  //   }
+  // }
+
+  // usize story_index{0};
+  // for (auto& stories : _grid)
+  // {
+  //   usize column_index{0};
+  //   for (auto& column : stories)
+  //   {
+  //     usize row_index{0};
+  //     for (auto& row : column)
+  //     {
+  //       if (!row.visited)
+  //       {
+  //         usize size = 0, min_story_id{usize_max}, min_column_id{usize_max}, min_row_id{usize_max}, max_story_id{usize_min},
+  //               max_column_id{usize_min}, max_row_id{usize_min};
+
+  //         // expand_by_one(_grid, story_index, column_index, row_index, size, min_story_id, min_column_id, min_row_id, max_story_id,
+  //         //               max_column_id, max_row_id);
+
+  //         // LOG(INFO) << "lolaz! size: " << size;
+
+  //         // if (size > biggest_current)
+  //         // {
+  //         //   biggest_current = size;
+  //         //   biggest = {_grid[min_story_id][min_column_id][min_row_id].bbox.min,
+  //         _grid[max_story_id][max_column_id][max_row_id].bbox.max};
+  //         // }
+
+  //         usize story_index1{0};
+  //         for (auto& _stories : _grid)
+  //         {
+  //           usize column_index1{0};
+  //           for (auto& _columns : _stories)
+  //           {
+  //             usize row_index1{0};
+  //             std::vector<usize> row_counts(_grid[0][0].size());
+  //             for (auto& _row : _columns)
+  //             {
+  //               test_dimension<'x'>(_grid, story_index1, column_index1, row_index1, row_counts[row_index1]);
+  //             }
+  //           }
+  //         }
+  //       }
+  //       ++row_index;
+  //     }
+  //     ++column_index;
+  //   }
+  //   ++story_index;
+  // }
+
+  std::vector<std::vector<std::vector<bool>>> bool_vector_bruh(
+      _grid.size(), std::vector<std::vector<bool>>(_grid[0].size(), std::vector<bool>(_grid[0][0].size(), false)));
 
   usize story_index{0};
-  for (auto& stories : _grid)
+  for (auto& story : _grid)
   {
     usize column_index{0};
-    for (auto& column : stories)
+    for (auto& column : story)
     {
       usize row_index{0};
       for (auto& row : column)
       {
-        if (!row.visited)
-        {
-          usize size = 0, min_story_id{usize_max}, min_column_id{usize_max}, min_row_id{usize_max}, max_story_id{usize_min},
-                max_column_id{usize_min}, max_row_id{usize_min};
-
-          
-          expand_by_one(_grid, story_index, column_index, row_index, size, min_story_id, min_column_id, min_row_id, max_story_id,
-                        max_column_id, max_row_id);
-
-          LOG(INFO) << "lolaz! size: " << size;
-
-          if (size > biggest_current)
-          {
-            biggest_current = size;
-            biggest = {_grid[min_story_id][min_column_id][min_row_id].bbox.min, _grid[max_story_id][max_column_id][max_row_id].bbox.max};
-          }
-        }
+        bool_vector_bruh[story_index][column_index][row_index] = row.on;
         ++row_index;
       }
       ++column_index;
     }
     ++story_index;
   }
+
+  auto largest_cuboid = findLargestCuboid(bool_vector_bruh);
+
+  LOG(INFO) << "lolaz!";
+
+  biggest = aabb_t{glm::vec3{largest_cuboid.xmin, largest_cuboid.ymin, largest_cuboid.zmin},
+                   glm::vec3{largest_cuboid.xmax, largest_cuboid.ymax, largest_cuboid.zmax}};
+
   return {biggest, biggest_current};
 }

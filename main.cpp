@@ -141,27 +141,28 @@ main(i32 argc, char** argv) -> i32
             debug_overlay_t::init(_window, game_renderer.game_camera);
 
             game_renderer.update_frame_buffer(_window);
-            game_renderer.model_renderer.add_model("dungeon", "../data/duskwoodchapel.obj");
+            game_renderer.model_renderer.add_model("dungeon", "../data/blackrock_lower_instance.obj");
 
-            for (const auto& mesh : game_renderer.model_renderer.static_world_models.at("dungeon").draw_model.meshes)
-            {
-              std::vector<triangle_t> tris;
-
-              for (usize i = 0; i < mesh.indices.size() - 4; i += 3)
-              {
-                tris.push_back({glm::vec3{mesh.vertices[mesh.indices[i]].position}, glm::vec3{mesh.vertices[mesh.indices[i + 1]].position},
-                                glm::vec3{mesh.vertices[mesh.indices[i + 2]].position}});
-              }
-              LOG(INFO) << "generating done mesh!";
-
-              vgrids[mesh.VAO].setup(10, 10, 10);
-              vgrids[mesh.VAO].generate(mesh.bbox, tris, tris.size());
-            }
+            // for (const auto& mesh : game_renderer.model_renderer.static_world_models.at("dungeon").draw_model.meshes)
+            //{
+            //   std::vector<triangle_t> tris;
+            //
+            //   for (usize i = 0; i < mesh.indices.size() - 4; i += 3)
+            //   {
+            //     tris.push_back({glm::vec3{mesh.vertices[mesh.indices[i]].position}, glm::vec3{mesh.vertices[mesh.indices[i +
+            //     1]].position},
+            //                     glm::vec3{mesh.vertices[mesh.indices[i + 2]].position}});
+            //   }
+            //   LOG(INFO) << "generating done mesh!";
+            //
+            //   vgrids[mesh.VAO].setup(20, 20, 20);
+            //   vgrids[mesh.VAO].generate(mesh.bbox, tris, tris.size());
+            // }
           })
       .loop(
           [&](GLFWwindow* _window)
           {
-            glClearColor(0.1f, 0.1f, 0.1f, 1.f);
+            glClearColor(230.f / 255.f, 105.f / 255.f, 102.f / 255.f, 1);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             process_input(_window);
@@ -170,11 +171,11 @@ main(i32 argc, char** argv) -> i32
             deltaTime        = currentFrame - lastFrame;
             lastFrame        = currentFrame;
 
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
             game_renderer.render();
 
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
             // auto collision_meshes = tree.find(game_renderer.game_camera.vec_position);
 
@@ -184,17 +185,20 @@ main(i32 argc, char** argv) -> i32
 
             for (auto& vgrid : vgrids)
             {
-              if (auto voxel = vgrid.second.find(cam.vec_position); voxel != nullptr)
-              {
-                debug_overlay_t::draw_AABB(voxel->bbox.min, voxel->bbox.max, 0x0302ffff, true);
+              // vgrid.second.draw();
+              //  if (auto voxel = vgrid.second.find(cam.vec_position); voxel != nullptr)
+              //{
+              //    debug_overlay_t::draw_AABB(voxel->bbox.min, voxel->bbox.max, 0x0302ffff, true);
+              //    for (const auto& tri : voxel->triangles_inside)
+              //    {
+              //      debug_overlay_t::draw_point(tri.a, 0xff0000ff, true);
+              //      debug_overlay_t::draw_point(tri.b, 0xff0000ff, true);
+              //      debug_overlay_t::draw_point(tri.c, 0xff0000ff, true);
+              //    }
+              //  }
 
-                for (const auto& tri : voxel->triangles_inside)
-                {
-                  debug_overlay_t::draw_point(tri.a, 0xff0000ff, true);
-                  debug_overlay_t::draw_point(tri.b, 0xff0000ff, true);
-                  debug_overlay_t::draw_point(tri.c, 0xff0000ff, true);
-                }
-              }
+              // auto largest_cube = vgrid.second.fint_largest_sub_cuboid(vgrid.second.grid);
+              // debug_overlay_t::draw_AABB(largest_cube.first.min, largest_cube.first.max, 0x0202ffff, true);
             }
 
             glPointSize(1);

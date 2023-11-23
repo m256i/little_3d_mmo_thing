@@ -8,7 +8,7 @@ in float camera_distance;
 
 uniform sampler2D texture_diffuse1;
 
-const float FOG_DISTANCE = 400;
+const float FOG_DISTANCE = 40;
 const float FOG_FACTOR   = 2;
 const vec4 FOG_COLOR     = vec4(230.f / 255.f, 105.f / 255.f, 102.f / 255.f, 1);
 

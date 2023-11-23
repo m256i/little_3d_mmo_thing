@@ -34,4 +34,5 @@ struct voxel_grid_t
   u0 generate(const aabb_t& _bbox, const std::vector<triangle_t>& _triangles, usize _tri_count);
   voxel_block_t* find(const glm::vec3& _position);
   u0 draw() const;
+  std::pair<aabb_t, usize> fint_largest_sub_cuboid(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid);
 };
