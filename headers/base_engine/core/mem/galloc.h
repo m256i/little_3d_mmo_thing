@@ -6,6 +6,8 @@
 #include <memory>
 #include <new>
 
+// TODO: very incomplete adding later
+
 /* general purpose slab alloc  */
 struct g_alloc_t
 {
@@ -13,21 +15,23 @@ struct g_alloc_t
   struct sized_block_t
   {
     std::array<u8, TSize> buffer{};
-    
+
     template <typename TType>
-    inline decltype(auto) as() noexcept
+    inline decltype(auto)
+    as() noexcept
     {
-      return ( *((TType*)(u0*)std::launder(buffer.data())) );
+      return (*((TType*)(u0*)std::launder(buffer.data())));
     }
 
     template <typename TType>
-    inline decltype(auto) as() const noexcept
+    inline decltype(auto)
+    as() const noexcept
     {
-      return ( *((const TType*)(u0*)std::launder(buffer.data())) );
+      return (*((const TType*)(u0*)std::launder(buffer.data())));
     }
   };
 
-  template <usize TSize, usize TCount> 
+  template <usize TSize, usize TCount>
   struct slab_page_t
   {
     slab_page_t()
@@ -40,18 +44,13 @@ struct g_alloc_t
       }
     }
 
-    
-
     std::array<sized_block_t<TSize>, TCount> buffer{};
     sized_block_t<TSize>* free_head{nullptr};
-
-
   };
 
   template <typename TType>
-  [[nodiscard]] TType* alloc(usize _count) noexcept 
+  [[nodiscard]] TType*
+  alloc(usize _count) noexcept
   {
-
-  } 
-
+  }
 };
