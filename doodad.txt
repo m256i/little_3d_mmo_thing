@@ -27,7 +27,6 @@
 
 all in all for the overworld this gives us the following struct:
 	
-
 chunk
 {
 	structure
