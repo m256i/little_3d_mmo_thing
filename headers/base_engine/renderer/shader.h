@@ -19,17 +19,19 @@ struct basic_shader_t
   std::string_view debug_name{};
 
   basic_shader_t(std::string_view _debug_name) : debug_name(_debug_name){};
-  basic_shader_t(std::string_view _debug_name, std::string_view _vertex_path, std::string_view _frag_path, const char *_geo_path = nullptr) : debug_name(_debug_name)
+  basic_shader_t(std::string_view _debug_name, std::string_view _vertex_path, std::string_view _frag_path, std::string_view _tess_path = {},
+                 std::string_view _tess_path_eval = {}, const char *_geo_path = nullptr)
+      : debug_name(_debug_name)
   {
-    if (!load_from_path(_vertex_path, _frag_path, _geo_path))
+    if (!load_from_path(_vertex_path, _frag_path, _tess_path, _geo_path))
     {
       LOG(INFO) << "[shader] : error loading shader" << debug_name;
     }
     LOG(INFO) << "[shader] : " << debug_name << "compiled succesfully";
   }
 
-  bool
-  load_from_path(std::string_view _vertex_path, std::string_view _frag_path, const char *_geo_path = nullptr);
+  bool load_from_path(std::string_view _vertex_path, std::string_view _frag_path, std::string_view _tess_control_path = {},
+                      std::string_view _tess_path_eval = {}, const char *_geo_path = nullptr);
 
   u0
   use() const
@@ -120,7 +122,8 @@ struct basic_shader_t
       if (!success)
       {
         glGetShaderInfoLog(_shader, 1024, NULL, out_log);
-        LOG(INFO) << "[shader] : error compiling shader: " << _type << "\n" << out_log << "\n -- --------------------------------------------------- -- ";
+        LOG(INFO) << "[shader] : error compiling shader: " << _type << "\n"
+                  << out_log << "\n -- --------------------------------------------------- -- ";
         return false;
       }
     }
@@ -130,7 +133,8 @@ struct basic_shader_t
       if (!success)
       {
         glGetProgramInfoLog(_shader, 1024, NULL, out_log);
-        LOG(INFO) << "[shader] : error compiling shader: " << _type << "\n" << out_log << "\n -- --------------------------------------------------- -- ";
+        LOG(INFO) << "[shader] : error compiling shader: " << _type << "\n"
+                  << out_log << "\n -- --------------------------------------------------- -- ";
         return false;
       }
     }

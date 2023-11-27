@@ -44,6 +44,8 @@
 #include "headers/logging/easylogging++.h"
 #include <include/vhacd/wavefront.h>
 
+#include <base_engine/world_generation/ground_plane.h>
+
 constinit f32 lastX = 1920.f / 2.0f;
 constinit f32 lastY = 1080.f / 2.0f;
 
@@ -132,6 +134,8 @@ main(i32 argc, char** argv) -> i32
 
   std::unordered_map<u32, voxel_grid_t> vgrids;
 
+  ground_plane_t plane{};
+
   return create_window("WoW Clone :D", false)
       .register_callback(glfwSetCursorPosCallback, mouse_callback)
       .init(
@@ -141,7 +145,7 @@ main(i32 argc, char** argv) -> i32
             debug_overlay_t::init(_window, game_renderer.game_camera);
 
             game_renderer.update_frame_buffer(_window);
-            game_renderer.model_renderer.add_model("dungeon", "../data/blackrock_lower_instance.obj");
+            // game_renderer.model_renderer.add_model("dungeon", "../data/blackrock_lower_instance.obj");
 
             // for (const auto& mesh : game_renderer.model_renderer.static_world_models.at("dungeon").draw_model.meshes)
             //{
@@ -158,11 +162,16 @@ main(i32 argc, char** argv) -> i32
             //   vgrids[mesh.VAO].setup(20, 20, 20);
             //   vgrids[mesh.VAO].generate(mesh.bbox, tris, tris.size());
             // }
+
+            // TODO: system to make here! should be set once when all of the tesselation shit gets drawn
+            glPatchParameteri(GL_PATCH_VERTICES, 4);
+
+            plane.load_shader();
           })
       .loop(
           [&](GLFWwindow* _window)
           {
-            glClearColor(230.f / 255.f, 105.f / 255.f, 102.f / 255.f, 1);
+            glClearColor(55.f / 255.f, 55.f / 255.f, 182.f / 255.f, 1);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             process_input(_window);
@@ -171,15 +180,20 @@ main(i32 argc, char** argv) -> i32
             deltaTime        = currentFrame - lastFrame;
             lastFrame        = currentFrame;
 
+            f64 cX, cY;
+            glfwGetCursorPos(_window, &cX, &cY);
+
             // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-            game_renderer.render();
+            // game_renderer.render();
 
             // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
             // auto collision_meshes = tree.find(game_renderer.game_camera.vec_position);
 
             auto& cam = game_renderer.game_camera;
+            plane.draw(8, game_renderer.display_w, game_renderer.display_h, &game_renderer.game_camera, 0xffffffff,
+                       {(cX / game_renderer.display_w), 1 - (cY / game_renderer.display_h)});
 
             glPointSize(5);
 

@@ -20,7 +20,7 @@ struct render_camera_t
 
   constexpr static float default_yaw         = -90.0f;
   constexpr static float default_pitch       = 0.0f;
-  constexpr static float default_speed       = 5.5f;
+  constexpr static float default_speed       = 1.5f;
   constexpr static float default_sensitivity = 0.1f;
   constexpr static float default_fov         = 90.0f;
 
@@ -31,8 +31,7 @@ struct render_camera_t
 
   render_camera_t(glm::vec3 _vec_position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 _up = glm::vec3(0.0f, 1.0f, 0.0f),
                   float _yaw = default_yaw, float _pitch = default_pitch)
-      : vec_front(glm::vec3(0.0f, 0.0f, -1.0f)), movement_speed(default_speed), mouse_sense(default_sensitivity),
-        fov(default_fov)
+      : vec_front(glm::vec3(0.0f, 0.0f, -1.0f)), movement_speed(default_speed), mouse_sense(default_sensitivity), fov(default_fov)
   {
     vec_position = _vec_position;
     vec_world_up = _up;
@@ -87,9 +86,8 @@ struct render_camera_t
     front.z   = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
     vec_front = glm::normalize(front);
     // also re-calculate the vec_right and vec_up vector
-    vec_right = glm::normalize(
-        glm::cross(vec_front, vec_world_up)); // normalize the vectors, because their length gets closer to 0 the more
-                                              // you look up or down which results in slower movement.
+    vec_right = glm::normalize(glm::cross(vec_front, vec_world_up)); // normalize the vectors, because their length gets closer to 0 the
+                                                                     // more you look up or down which results in slower movement.
     vec_up = glm::normalize(glm::cross(vec_right, vec_front));
   }
 };

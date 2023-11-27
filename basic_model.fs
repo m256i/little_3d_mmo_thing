@@ -1,4 +1,4 @@
-#version 330 core
+#version 430 core
 out vec4 FragColor;
 
 in vec2 TexCoords;
@@ -8,9 +8,8 @@ in float camera_distance;
 
 uniform sampler2D texture_diffuse1;
 
-const float FOG_DISTANCE = 40;
-const float FOG_FACTOR   = 2;
-const vec4 FOG_COLOR     = vec4(230.f / 255.f, 105.f / 255.f, 102.f / 255.f, 1);
+const float FOG_DISTANCE = 100;
+const vec4 FOG_COLOR     = vec4(50 / 255.f, 42 / 255.f, 43 / 255.f, 1.f);
 
 void
 main()

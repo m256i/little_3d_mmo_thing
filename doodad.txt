@@ -1,0 +1,47 @@
+
+- 3d with WoW inspired graphics ( i really want this :> )
+
+- split into medium sized chunks maybe 300-500 m^2
+
+- terrain built on cpu using high res -noise texture
+
+- players are able to place buildings and structures into the world, to make collision etc easier
+	the placing of buildings etc is confined to a grid perhaps with a granularity alike wurm online
+	the floor is leveled out at the point where the building is placed so that the grid is note deviated from
+	even on the y (height) axis
+
+- the exact generation algorithm isnt yet clear hoewer i would suggest to use differently tuned noise textures for different 
+	biomes and interpolate between them between one or multiple chunks
+
+- other "overworld" terraforming not possible
+
+- all of the collidable objects on the ground use basic OOBs and the algoritm  to generate them should be deterministic 
+	so that the state of them can be regenerated on the spot without the need for any additional storage on their
+	state
+
+- we propably want things like trees you can cut down and stones you can mase down 
+	WoW does it in a way where to the server entities like those only have to states (existing, cut down)
+	so we can store the state of those in a bitvec very efficiently the rest is just client side stuff
+	we dont have to store the time they were cut down to "refill" them we can just make it so all of the things in one 
+	chunk all reappear after a set amount of time which makes it even more space efficient
+
+all in all for the overworld this gives us the following struct:
+	
+
+chunk
+{
+	structure
+	{
+		type: u32
+		chunk_subchunk_index: u32 // we can store the position of the building basically just as the index of the "voxel" that the origin is placed on
+		orientation: u8 (N,E,S,W)
+	} // size  9-10 bytes packed, 12 bytes padded
+	structures: var_array<structure> for 10 buildings this makes ~108 bytes with clever serialization
+	interactives: var_array<byte> one byte per tree/stone/ore... for 500 trees per thats 508 bytes (64 bit length)
+}
+
+total size for a populated chunk: 
+	~612 bytes for 500m^2
+	-> 1,2kb/km^2 
+
+which makes a map of 1000 km^2 ~ 1,2mb which is tiny 

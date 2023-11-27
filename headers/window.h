@@ -16,11 +16,14 @@ struct game_window_t
       return;
     }
 
-    if (_fullscreen)
-    {
-      glfwWindowHint(GLFW_DECORATED, GL_FALSE);
-      glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-    }
+    glfwDefaultWindowHints();
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+
+#ifdef __apple__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+#endif
 
     i32 monitor_count{};
 
@@ -30,10 +33,10 @@ struct game_window_t
     window_width  = vmode->width;
     window_height = vmode->height;
 
-    glfwDefaultWindowHints();
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_SAMPLES, 4);
-    window = glfwCreateWindow(window_width, window_height, _name.data(), nullptr, nullptr);
+
+    window = glfwCreateWindow(window_width, window_height, _name.data(), *monitor_pointer, nullptr);
 
     if (!window) [[unlikely]]
     {
@@ -53,8 +56,6 @@ struct game_window_t
     // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     glfwSwapInterval(0);
-
-    glEnable(GL_MULTISAMPLE);
 
     glfwSetWindowPos(window, 0, 0);
     glfwShowWindow(window);
