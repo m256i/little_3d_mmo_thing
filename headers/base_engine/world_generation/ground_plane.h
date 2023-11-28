@@ -56,7 +56,7 @@ struct ground_plane_t
     glm::mat4 _view       = camera->get_view_matrix();
     glm::mat4 model       = glm::mat4(1.0f);
     model                 = glm::translate(model, {1.f, 1.f, 1.f});
-    model                 = glm::scale(model, {400.f, 400.f, 400.f});
+    model                 = glm::scale(model, {700.f, 700.f, 700.f});
     model                 = glm::rotate(model, glm::radians(90.f), glm::vec3{1.f, 0, 0});
 
     shader.setMat4("projection", _projection);
@@ -70,7 +70,7 @@ struct ground_plane_t
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     glBindVertexArray(vao);
-    glDrawElements(GL_PATCHES, (i32)indices.size(), GL_UNSIGNED_INT, 0);
+    glDrawElementsInstanced(GL_PATCHES, (i32)indices.size(), GL_UNSIGNED_INT, 0, 100);
     glBindVertexArray(0);
 
     // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

@@ -159,3 +159,87 @@ int main()
     std::cout << maximalCuboid(bla2).size;
 
 }
+
+
+
+
+
+#include <array>
+#include <vector>
+#include <future>
+#include <memory>
+#include <mutex>
+#include <new>
+#include <immintrin.h> // prefetching
+#include <type_traits>
+#include <coroutine>
+#include <atomic>
+#include <iostream>
+
+struct shader_builder
+{
+    std::string content{};
+
+    struct sb_ast_node
+    {
+        std::string operation{};
+        sb_ast_node* prev{}, *next{};
+    };
+
+    void build_recursive(sb_ast_node* _node)
+    {
+        if (_node->prev == nullptr && _node->next == nullptr)
+        {
+            content += _node->operation;
+        }
+
+        if (_node->prev != nullptr)
+        {
+            content += "(";
+            build_recursive(_node->prev);
+            content += ")";
+        }
+        
+        if (_node->prev != nullptr && _node->next != nullptr)
+        {
+            content += _node->operation;
+        }
+        
+        if (_node->next != nullptr)
+        {
+            content += "(";
+            build_recursive(_node->next);
+            content += ")";
+        }
+    }
+
+    void build()
+    {
+        build_recursive(&root);
+    }
+
+    void print_content()
+    {
+        std::cout << content << "\n";
+    }
+
+    sb_ast_node root;
+};
+
+int main()
+{
+    shader_builder s;
+
+    shader_builder::sb_ast_node lhslhs{"2.5", 0,0};
+    shader_builder::sb_ast_node lhsrhs{"800", 0,0};
+
+    shader_builder::sb_ast_node lhs{"+", &lhslhs, &lhsrhs}, rhs{"89", 0,0};
+
+    s.root.operation = "+";
+    s.root.prev = &lhs;
+    s.root.next = &rhs;
+
+    s.build();
+    s.print_content();
+
+}

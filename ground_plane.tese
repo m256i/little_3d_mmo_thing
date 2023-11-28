@@ -4,6 +4,7 @@
 layout(quads, equal_spacing, ccw) in;
 
 in vec2 uvsCoord[];
+in int instance_id_[];
 
 out vec2 uvs;
 out vec3 out_p;
@@ -110,7 +111,7 @@ main()
   vec4 rightPos = pos1 + v * (pos2 - pos1);
   vec4 pos      = leftPos + u * (rightPos - leftPos);
 
-  pos.z += (perlin2d(abs(pos.x - 200), abs(pos.y - 200), 7, 2) / 4);
+  pos.z += (perlin2d(abs(pos.x - 200) + instance_id_[0], abs(pos.y - 200) + instance_id_[2], 7, 2) / 4);
 
   gl_Position = projection * view * model * pos; // Matrix transformations go here
 

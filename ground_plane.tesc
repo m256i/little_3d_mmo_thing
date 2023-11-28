@@ -4,7 +4,10 @@
 layout(vertices = 4) out;
 
 in vec2 uvs[];
+in int instance_id[];
+
 out vec2 uvsCoord[];
+out int instance_id_[];
 
 layout(location = 0) uniform vec3 cursor;
 vec4 cursorPos = vec4(cursor.xz, 0, 0); // get in range [-1, 1]
@@ -19,6 +22,7 @@ main()
 {
   gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
   uvsCoord[gl_InvocationID]           = uvs[gl_InvocationID];
+  instance_id_[gl_InvocationID]       = instance_id[gl_InvocationID];
 
   if (gl_InvocationID == 0)
   {
