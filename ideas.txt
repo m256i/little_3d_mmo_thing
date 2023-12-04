@@ -163,7 +163,6 @@ int main()
 
 
 
-
 #include <array>
 #include <vector>
 #include <future>
@@ -175,6 +174,7 @@ int main()
 #include <coroutine>
 #include <atomic>
 #include <iostream>
+#include <variant>
 
 struct shader_builder
 {
@@ -183,32 +183,123 @@ struct shader_builder
     struct sb_ast_node
     {
         std::string operation{};
-        sb_ast_node* prev{}, *next{};
+        sb_ast_node *lhs{}, *rhs{};
+        std::string branch_owner{};
+
+        void flip()
+        {
+            auto temp = rhs;
+            rhs = lhs;
+            lhs = temp;
+        }
+
+        void print()
+        {
+            //std::cout << lhs->operation << operation << rhs->operation << " owner: " << branch_owner << "\n";
+        }
+
     };
+
+    struct sb_ast_node_simple
+    {
+        std::string lhs{}, operation{}, rhs{};
+
+        void print()
+        {
+          //  std::cout << lhs << operation << rhs << "\n";
+        }
+
+        void flip()
+        {
+            auto temp = rhs;
+            rhs = lhs;
+            lhs = temp;
+        }
+    };
+    
+    sb_ast_node root, last_added;
+
+
+    std::vector<sb_ast_node> temp_nodes;
+    std::vector<sb_ast_node_simple> outside_buffer{};
+
+    void add_to_ast()
+    {
+        last_added = {outside_buffer[0].operation, new sb_ast_node{outside_buffer[0].lhs}, new sb_ast_node{outside_buffer[0].rhs, }, outside_buffer[0].lhs};
+        
+      //  std::cout << "first node: ";
+        last_added.print(); 
+
+        for (int i = 1; i != outside_buffer.size(); i++)
+        {
+            // if new lhs is equal to last lhs we want to set new lhs to last and update last to be new
+            if (outside_buffer[i].lhs == last_added.branch_owner)
+            {
+             //   std::cout << "current: ";
+                outside_buffer[i].print();
+             //   std::cout << "added old lhs to  new lhs!\n";
+
+                auto old_last = last_added;
+                last_added = {outside_buffer[i].operation, new sb_ast_node{old_last}, new sb_ast_node{outside_buffer[i].rhs}, last_added.branch_owner};
+
+             //   std::cout << "last added now: ";
+                last_added.print();
+
+              //  std::cout << "last added lhs now: ";
+                last_added.lhs->print();
+
+                continue;
+            }
+            // if new rhs is equal to last lhs we want to new rhs to last lhs and update last
+            if (outside_buffer[i].rhs ==last_added.branch_owner)
+            {   
+              //  std::cout << "current: ";
+                outside_buffer[i].print();
+             //   std::cout << "added old lhs to  new rhs!\n";
+
+                auto old_last = last_added;
+                last_added = {outside_buffer[i].operation, new sb_ast_node{outside_buffer[i].lhs}, new sb_ast_node{old_last}, last_added.branch_owner};
+
+              //  std::cout << "last added now: ";
+                last_added.print();
+
+              //  std::cout << "last added lhs now: ";
+               // last_added.lhs->print();
+                continue;
+            }
+            else 
+            {
+                std::cout << "ERROR!\n";
+            }
+        }
+
+        root = last_added;
+
+    }
 
     void build_recursive(sb_ast_node* _node)
     {
-        if (_node->prev == nullptr && _node->next == nullptr)
+        if (_node->lhs == nullptr && _node->rhs == nullptr)
         {
             content += _node->operation;
         }
 
-        if (_node->prev != nullptr)
+        if (_node->lhs != nullptr)
         {
             content += "(";
-            build_recursive(_node->prev);
+            build_recursive(_node->lhs);
             content += ")";
         }
         
-        if (_node->prev != nullptr && _node->next != nullptr)
+        if (_node->lhs != nullptr && _node->rhs != nullptr)
         {
             content += _node->operation;
         }
         
-        if (_node->next != nullptr)
+        if (_node->rhs != nullptr)
         {
             content += "(";
-            build_recursive(_node->next);
+            build_recursive(_node->rhs);
             content += ")";
         }
     }
@@ -220,26 +311,83 @@ struct shader_builder
 
     void print_content()
     {
+        add_to_ast();
+        build();
         std::cout << content << "\n";
     }
 
-    sb_ast_node root;
+    
 };
+
+shader_builder sb{};
+
+struct test_num
+{
+    test_num(std::string _name)
+    {
+        name = _name;
+        local_node.lhs = new shader_builder::sb_ast_node{name, 0, 0, name};
+    }
+
+    std::string name{};
+    shader_builder::sb_ast_node local_node{};
+
+    decltype(auto) operator+(const test_num& other)
+    {
+        sb.outside_buffer.push_back({name, "+", other.name});
+        return (*this);
+    }
+    decltype(auto) operator-(const test_num& other)
+    {
+        sb.outside_buffer.push_back({name, "-", other.name});
+        return (*this);
+    }
+    decltype(auto) operator*(const test_num& other)
+    {
+        sb.outside_buffer.push_back({name, "*", other.name});
+        return (*this);
+    }
+
+    friend decltype(auto) operator*(int lhs, const test_num& other)
+    {
+        sb.outside_buffer.push_back({std::to_string(lhs), "*", other.name});
+        return lhs;
+    }
+
+    decltype(auto) operator/(const test_num& other)
+    {
+        sb.outside_buffer.push_back({name, "/", other.name});
+        return (*this);
+    }
+    decltype(auto) operator/(const int& other)
+    {
+        sb.outside_buffer.push_back({name, "/", std::to_string(other)});
+        return (*this);
+    }
+    decltype(auto) operator=(const test_num& other)
+    {
+        sb.outside_buffer.push_back({name, "=", other.name});
+        return (*this);
+    }
+
+    decltype(auto) operator=(const int& other)
+    {
+        sb.outside_buffer.push_back({name, "=", std::to_string(other)});
+        return (*this);
+    }
+
+};
+
+
+// the built-ins as struct member of shader template 
+// others can get unique generated names internally
+// move to compile
+
+test_num gl_Position{"gl_Position"},b{"b"},c{"c"};
+
 
 int main()
 {
-    shader_builder s;
-
-    shader_builder::sb_ast_node lhslhs{"2.5", 0,0};
-    shader_builder::sb_ast_node lhsrhs{"800", 0,0};
-
-    shader_builder::sb_ast_node lhs{"+", &lhslhs, &lhsrhs}, rhs{"89", 0,0};
-
-    s.root.operation = "+";
-    s.root.prev = &lhs;
-    s.root.next = &rhs;
-
-    s.build();
-    s.print_content();
-
+    gl_Position = 3 * c;
+    sb.print_content();
 }
