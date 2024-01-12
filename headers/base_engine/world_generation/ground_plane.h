@@ -23,15 +23,18 @@ struct ground_plane_t
     shader.load_from_path("../debug.vs", "../debug.fs", "../ground_plane.tesc", "../ground_plane.tese");
   }
 
+  u32 vao, vbo, ebo;
+
+  std::vector<f32> vertices{};
+  std::vector<u32> indices{};
+
   u0
-  draw(usize _divs, auto display_w, auto display_h, auto camera, u32 _col, glm::vec2 _cursor)
+  initialize(usize _divs)
   {
-    u32 vao, vbo, ebo;
+    vertices = genNonSymPlaneUniform(glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(0.5f, -0.5f, 0.0f), glm::vec3(0.5f, 0.5f, 0.0f),
+                                     glm::vec3(-0.5f, 0.5f, 0.0f), _divs);
 
-    std::vector<f32> vertices = genNonSymPlaneUniform(glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(0.5f, -0.5f, 0.0f),
-                                                      glm::vec3(0.5f, 0.5f, 0.0f), glm::vec3(-0.5f, 0.5f, 0.0f), _divs);
-
-    std::vector<u32> indices = genPlaneIndices(_divs);
+    indices = genPlaneIndices(_divs);
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -49,15 +52,19 @@ struct ground_plane_t
 
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void*)(5 * sizeof(f32)));
     glEnableVertexAttribArray(1);
+  }
 
+  u0
+  draw(auto display_w, auto display_h, auto camera, u32 _col, glm::vec2 _cursor)
+  {
     shader.use();
 
-    glm::mat4 _projection = glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 1000.0f);
-    glm::mat4 _view       = camera->get_view_matrix();
-    glm::mat4 model       = glm::mat4(1.0f);
-    model                 = glm::translate(model, {1.f, 1.f, 1.f});
-    model                 = glm::scale(model, {700.f, 700.f, 700.f});
-    model                 = glm::rotate(model, glm::radians(90.f), glm::vec3{1.f, 0, 0});
+    static glm::mat4 _projection = glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 1000.0f);
+    glm::mat4 _view              = camera->get_view_matrix();
+    glm::mat4 model              = glm::mat4(1.0f);
+    model                        = glm::translate(model, {1.f, 1.f, 1.f});
+    model                        = glm::scale(model, {700.f, 700.f, 700.f});
+    model                        = glm::rotate(model, glm::radians(90.f), glm::vec3{1.f, 0, 0});
 
     shader.setMat4("projection", _projection);
     shader.setMat4("view", _view);
@@ -67,14 +74,14 @@ struct ground_plane_t
     shader.setVec4("in_color", glm::vec4{(f32)((_col >> 24) & 0xff) / 255.f, (f32)((_col >> 16) & 0xff) / 255.f,
                                          (f32)((_col >> 8) & 0xff) / 255.f, (f32)((_col)&0xff) / 255.f});
 
-    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
     glBindVertexArray(vao);
-    glDrawElementsInstanced(GL_PATCHES, (i32)indices.size(), GL_UNSIGNED_INT, 0, 100);
+    glDrawElementsInstanced(GL_PATCHES, (i32)indices.size(), GL_UNSIGNED_INT, 0, 1);
     glBindVertexArray(0);
+  }
 
-    // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
+  u0
+  destroy()
+  {
     glDeleteVertexArrays(1, &vao);
     glDeleteBuffers(1, &vbo);
     glDeleteBuffers(1, &ebo);

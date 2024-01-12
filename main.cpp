@@ -167,6 +167,7 @@ main(i32 argc, char** argv) -> i32
             glPatchParameteri(GL_PATCH_VERTICES, 4);
 
             plane.load_shader();
+            plane.initialize(8);
           })
       .loop(
           [&](GLFWwindow* _window)
@@ -192,7 +193,7 @@ main(i32 argc, char** argv) -> i32
             // auto collision_meshes = tree.find(game_renderer.game_camera.vec_position);
 
             auto& cam = game_renderer.game_camera;
-            plane.draw(8, game_renderer.display_w, game_renderer.display_h, &game_renderer.game_camera, 0xffffffff,
+            plane.draw(game_renderer.display_w, game_renderer.display_h, &game_renderer.game_camera, 0xffffffff,
                        {(cX / game_renderer.display_w), 1 - (cY / game_renderer.display_h)});
 
             glPointSize(5);
