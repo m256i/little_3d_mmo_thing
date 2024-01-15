@@ -45,6 +45,7 @@
 #include <include/vhacd/wavefront.h>
 
 #include <base_engine/world_generation/ground_plane.h>
+#include <base_engine/core/draw_data_buffer.h>
 
 constinit f32 lastX = 1920.f / 2.0f;
 constinit f32 lastY = 1080.f / 2.0f;
@@ -136,6 +137,10 @@ main(i32 argc, char** argv) -> i32
 
   ground_plane_t plane{};
 
+  draw_buffer_t<int, float, int> b;
+
+  b.load_buffer<2>(std::array{1, 2, 3, 4});
+
   return create_window("WoW Clone :D", false)
       .register_callback(glfwSetCursorPosCallback, mouse_callback)
       .init(
@@ -193,8 +198,7 @@ main(i32 argc, char** argv) -> i32
             // auto collision_meshes = tree.find(game_renderer.game_camera.vec_position);
 
             auto& cam = game_renderer.game_camera;
-            plane.draw(game_renderer.display_w, game_renderer.display_h, &game_renderer.game_camera, 0xffffffff,
-                       {(cX / game_renderer.display_w), 1 - (cY / game_renderer.display_h)});
+            plane.draw(game_renderer.display_w, game_renderer.display_h, &game_renderer.game_camera, 0xffffffff);
 
             glPointSize(5);
 

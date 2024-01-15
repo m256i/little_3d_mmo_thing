@@ -66,6 +66,19 @@ ref_mafia(TType* const _ptr)
   return (*(TToType*)(u0*)std::launder(_ptr));
 }
 
+template <usize TIndex, typename... TTypes>
+using nth_type = std::tuple_element_t<TIndex, std::tuple<TTypes...>>;
+
+template <usize TOffset, typename TTuple, usize... TIndices>
+decltype(auto)
+nth_type_v(std::index_sequence<TIndices...> s)
+{
+  return std::tuple<std::tuple_element_t<TIndices + TOffset, TTuple>...>{};
+}
+
+template <usize TStart, usize TEnd, typename... TTypes>
+using type_subrange = decltype(nth_type_v<TStart, std::tuple<TTypes...>>(std::make_index_sequence<TEnd - TStart>{}));
+
 template <typename TType, typename TFunc, std::size_t... TIndex>
 constexpr void
 visit_impl(TType& _tuple, const size_t _index, TFunc _func, std::index_sequence<TIndex...>)
@@ -116,11 +129,10 @@ mmax(const auto& _a, const auto& _b)
 #endif
 
 auto
-enumerate(auto& _container) -> std::vector<std::pair<
-    const std::size_t, std::reference_wrapper<typename std::remove_reference_t<decltype(_container)>::value_type>>>
+enumerate(auto& _container)
+    -> std::vector<std::pair<const std::size_t, std::reference_wrapper<typename std::remove_reference_t<decltype(_container)>::value_type>>>
 {
-  std::vector<std::pair<const std::size_t,
-                        std::reference_wrapper<typename std::remove_reference_t<decltype(_container)>::value_type>>>
+  std::vector<std::pair<const std::size_t, std::reference_wrapper<typename std::remove_reference_t<decltype(_container)>::value_type>>>
       out{};
 
   std::size_t counter{0};
@@ -136,7 +148,7 @@ struct color_t
   u8 r, g, b, a;
 
   color_t(u8 _r, u8 _g, u8 _b, u8 _a) : r(_r), g(_g), b(_b), a(_a) {}
-  color_t(u32 _col) : r(_col >> 24), g((_col >> 16) & 0xff), b((_col >> 8) & 0xff), a((_col)&0xff) {}
+  color_t(u32 _col) : r(_col >> 24), g((_col >> 16) & 0xff), b((_col >> 8) & 0xff), a((_col) & 0xff) {}
 
   u32
   as_u32()

@@ -47,15 +47,15 @@ struct ground_plane_t
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(u32), indices.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void *)0);
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void*)(5 * sizeof(f32)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void *)(5 * sizeof(f32)));
     glEnableVertexAttribArray(1);
   }
 
   u0
-  draw(auto display_w, auto display_h, auto camera, u32 _col, glm::vec2 _cursor)
+  draw(auto display_w, auto display_h, auto camera, u32 _col)
   {
     shader.use();
 
@@ -72,10 +72,10 @@ struct ground_plane_t
 
     shader.setVec3("cursor", camera->vec_position);
     shader.setVec4("in_color", glm::vec4{(f32)((_col >> 24) & 0xff) / 255.f, (f32)((_col >> 16) & 0xff) / 255.f,
-                                         (f32)((_col >> 8) & 0xff) / 255.f, (f32)((_col)&0xff) / 255.f});
+                                         (f32)((_col >> 8) & 0xff) / 255.f, (f32)((_col) & 0xff) / 255.f});
 
     glBindVertexArray(vao);
-    glDrawElementsInstanced(GL_PATCHES, (i32)indices.size(), GL_UNSIGNED_INT, 0, 1);
+    glDrawElementsInstanced(GL_PATCHES, (i32)indices.size(), GL_UNSIGNED_INT, 0, 2);
     glBindVertexArray(0);
   }
 
