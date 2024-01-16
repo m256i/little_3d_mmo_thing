@@ -4,7 +4,6 @@
 #include <vector>
 #include <ranges>
 #include <assert.h>
-#include <concepts>
 #include <tuple>
 
 #include "../../../common.h"
@@ -28,12 +27,12 @@ struct tuple_pack_size<std::tuple<TArgs...>>
 
 template <typename TType>
 concept std_copyable = requires(TType type) {
-                         /* we want to be able to copy and also get size information from type */
-                         // std::ranges::copy(TType{}, TType{});
-                         typename TType::value_type;
-                         type.size();
-                         type.data();
-                       };
+  /* we want to be able to copy and also get size information from type */
+  // std::ranges::copy(TType{}, TType{});
+  typename TType::value_type;
+  type.size();
+  type.data();
+};
 
 constexpr usize
 total_size(const std_copyable auto& ctr)
@@ -71,17 +70,8 @@ struct draw_buffer_impl
   inline draw_buffer_impl(const draw_buffer_impl& other) : cache(other.cache) {}
   inline draw_buffer_impl(draw_buffer_impl&& other) : cache(std::move(other.cache)) {}
 
-  inline decltype(auto)
-  operator=(const draw_buffer_impl& other)
-  {
-    cache = other.cache;
-  }
-
-  inline decltype(auto)
-  operator=(draw_buffer_impl&& other)
-  {
-    cache = std::move(other.cache);
-  }
+  inline decltype(auto) operator=(const draw_buffer_impl & other) { cache = other.cache; }
+  inline decltype(auto) operator=(draw_buffer_impl && other) { cache = std::move(other.cache); }
 
   template <typename TType, usize TSize>
   constexpr draw_buffer_impl(const TType (&arr)[TSize], usize count)
@@ -132,7 +122,7 @@ struct draw_buffer_impl
 
     static constexpr auto mem_offset = tuple_pack_size<type_subrange<TLaneIndex - 1, sizeof...(TTypes), TTypes...>>::value - pack_size;
 
-    for (const auto [index, ite] : enumerate(buffer))
+    for (auto [index, ite] : enumerate(buffer))
     {
       cache_as<decltype(ite)>(cache, index * pack_size + mem_offset) = ite;
     }
@@ -161,7 +151,7 @@ struct draw_buf_t
   draw_buffer_impl<typename TBufferMembers::type...> buffer;
 
   template <ct_string TString>
-  consteval usize
+  consteval static usize
   index_of_str()
   {
     usize out_index = (usize)-1;
@@ -183,9 +173,8 @@ struct draw_buf_t
   u0
   load(const auto& _new_data)
   {
-    static constexpr usize lane_index = index_of_str<TBufferName>();
+    constexpr usize lane_index{index_of_str<TBufferName>()};
     static_assert(lane_index != (usize)-1, "typo in ctime-buffer name");
-
-    buffer.load_buffer<lane_index>(_new_data);
+    buffer.template load_buffer<lane_index>(_new_data);
   }
 };

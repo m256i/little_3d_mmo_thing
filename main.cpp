@@ -143,15 +143,18 @@ main(i32 argc, char** argv) -> i32
   static draw_buf_t
   <
     buf_elem<"stupi idior", float>,
-    buf_elem<"maow!", std::tuple<int, int, int>>
+    buf_elem<"vertices", glm::vec3>
   > 
   impl_test_buffer;
   
-  static_assert(impl_test_buffer.index_of_str<"maow!">() == 1); // OK!
+  static_assert(impl_test_buffer.index_of_str<"vertices">() == 1); // OK!
   //static_assert(impl_test_buffer.index_of_str<"maaow!">() == 1); // COMPILE ERROR!
   
-  impl_test_buffer.load<"maow!">(std::tuple{1,2,3});
-  impl_test_buffer.load<"maodw!">(std::tuple{1,2,3}); // COMPILE ERROR!
+
+  std::vector<glm::vec3> test{{123.f ,2.f ,5.f}};
+
+  impl_test_buffer.load<"vertices">(test);
+  //impl_test_buffer.load<"maodw!">(std::tuple{1,2,3}); // COMPILE ERROR!
 
   // clang-format on
 
