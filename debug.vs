@@ -1,10 +1,9 @@
 #version 430 core
 layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec3 TexCoords;
+layout(location = 1) in vec2 TexCoords;
 
 // out float camera_distance;
 out vec2 uvs;
-
 out int instance_id;
 
 void

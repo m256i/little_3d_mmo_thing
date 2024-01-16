@@ -137,9 +137,23 @@ main(i32 argc, char** argv) -> i32
 
   ground_plane_t plane{};
 
-  draw_buffer_t<int, float, int> b;
+  // clang-format off
+  
+  // usage: 
+  static draw_buf_t
+  <
+    buf_elem<"stupi idior", float>,
+    buf_elem<"maow!", std::tuple<int, int, int>>
+  > 
+  impl_test_buffer;
+  
+  static_assert(impl_test_buffer.index_of_str<"maow!">() == 1); // OK!
+  //static_assert(impl_test_buffer.index_of_str<"maaow!">() == 1); // COMPILE ERROR!
+  
+  impl_test_buffer.load<"maow!">(std::tuple{1,2,3});
+  impl_test_buffer.load<"maodw!">(std::tuple{1,2,3}); // COMPILE ERROR!
 
-  b.load_buffer<2>(std::array{1, 2, 3, 4});
+  // clang-format on
 
   return create_window("WoW Clone :D", false)
       .register_callback(glfwSetCursorPosCallback, mouse_callback)

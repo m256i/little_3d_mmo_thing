@@ -6,11 +6,18 @@
 #include <new>
 #include <string_view>
 #include <tuple>
+#include <array>
 #include <type_traits>
 #include <utility>
 #include <vector>
 #include <functional>
 #include "headers/logging/easylogging++.h"
+
+#ifdef _DEBUG
+static constexpr bool IS_DEBUG_BUILD = true;
+#else
+static constexpr bool IS_DEBUG_BUILD = true;
+#endif
 
 using b8 = char;
 using b0 = bool;
@@ -138,7 +145,23 @@ enumerate(auto& _container)
   std::size_t counter{0};
   for (auto& ite : _container)
   {
-    out.emplace_back(counter++, std::ref(ite));
+    out.push_back(std::make_pair(counter++, std::ref(ite)));
+  }
+  return out;
+}
+
+auto
+enumerate(const auto& _container) -> std::vector<
+    std::pair<const std::size_t, std::reference_wrapper<const typename std::remove_reference_t<decltype(_container)>::value_type>>>
+{
+  std::vector<
+      std::pair<const std::size_t, std::reference_wrapper<const typename std::remove_reference_t<decltype(_container)>::value_type>>>
+      out{};
+
+  std::size_t counter{0};
+  for (const auto& ite : _container)
+  {
+    out.push_back(std::make_pair(counter++, std::ref(ite)));
   }
   return out;
 }
@@ -148,11 +171,65 @@ struct color_t
   u8 r, g, b, a;
 
   color_t(u8 _r, u8 _g, u8 _b, u8 _a) : r(_r), g(_g), b(_b), a(_a) {}
-  color_t(u32 _col) : r(_col >> 24), g((_col >> 16) & 0xff), b((_col >> 8) & 0xff), a((_col) & 0xff) {}
+  color_t(u32 _col) : r(_col >> 24), g((_col >> 16) & 0xff), b((_col >> 8) & 0xff), a((_col)&0xff) {}
 
   u32
   as_u32()
   {
     return (u32)((u32)r << 24 | (u32)g << 16 | (u32)b << 8 | (u32)a);
   }
+};
+
+template <size_t TBegin, size_t TEnd, size_t TStep, typename TLambda>
+consteval void
+for_constexpr(TLambda&& _lambda)
+{
+  if constexpr (TBegin < TEnd)
+  {
+    _lambda(std::integral_constant<decltype(TBegin), TBegin>());
+    for_constexpr<TBegin + TStep, TEnd, TStep>(_lambda);
+  }
+}
+
+template <typename TCharArr, std::size_t TSize>
+struct ct_string
+{
+  consteval ct_string(const TCharArr (&arr)[TSize]) : data{std::to_array(arr)} {}
+  consteval ct_string(const std::array<TCharArr, TSize> arr) : data{arr} {}
+
+  [[nodiscard]] consteval std::string_view
+  to_view() const noexcept
+  {
+    return std::string_view{data.begin(), data.end()};
+  }
+  std::array<TCharArr, TSize> data;
+};
+
+template <typename TType>
+struct error_t
+{
+  TType value;
+  bool has_error{true};
+
+  [[gnu::always_inline]] decltype(auto)
+  get() noexcept
+  {
+    if constexpr (IS_DEBUG_BUILD)
+    {
+      if (has_error)
+      {
+#ifdef _WIN32
+        MessageBoxA(nullptr, "error_t: was set", 1);
+        std::terminate();
+        __builtin_unreachable();
+#endif
+      }
+      else
+      {
+        return (value);
+      }
+    }
+  }
+  /* if we set this to true by default we avoid alot of stupid things */
+  /* essentially we assume that things are going to shit by default */
 };
