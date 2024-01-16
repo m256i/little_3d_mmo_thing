@@ -153,6 +153,102 @@ voxel_grid_t::find(const glm::vec3& _position)
   return &grid[story_index][column_index][row_index];
 }
 
+inline u0
+expand_by_one(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid, usize _story_index, usize _column_index, usize _row_index,
+              usize& current_size, usize& _min_story_index, usize& _min_column_index, usize& _min_row_index, usize& _max_story_index,
+              usize& _max_column_index, usize& _max_row_index)
+{
+  LOG(INFO) << "new expand_by_one() _story_index: " << _story_index << " _column_index: " << _column_index << " _row_index" << _row_index;
+
+  if (_story_index >= _grid.size())
+  {
+    LOG(INFO) << "hit end!";
+    return;
+  }
+
+  if (_column_index >= _grid[0].size())
+  {
+    LOG(INFO) << "hit end!";
+    return;
+  }
+
+  if (_row_index >= _grid[0][0].size())
+  {
+    LOG(INFO) << "hit end!";
+    return;
+  }
+
+  if (_grid[_story_index][_column_index][_row_index].visited)
+  {
+    LOG(INFO) << "already seen";
+    return;
+  }
+
+  if (!_grid[_story_index][_column_index][_row_index].on)
+  {
+    LOG(INFO) << "hit off block!";
+    return;
+  }
+
+  current_size++;
+  _grid[_story_index][_column_index][_row_index].visited = true;
+
+  _min_story_index  = mmin(_min_story_index, _story_index);
+  _min_column_index = mmin(_min_column_index, _column_index);
+  _min_row_index    = mmin(_min_row_index, _row_index);
+
+  _max_story_index  = mmax(_max_story_index, _story_index);
+  _max_column_index = mmax(_max_column_index, _column_index);
+  _max_row_index    = mmax(_max_row_index, _row_index);
+
+  // clang-format off
+  expand_by_one(_grid, 
+      _story_index, _column_index, _row_index + 1, 
+    current_size, 
+  _min_story_index, _min_column_index, _min_row_index,
+  _max_story_index, _max_column_index, _max_row_index);
+
+  if (_row_index >= 1)
+  {
+    expand_by_one(_grid, 
+        _story_index, _column_index, _row_index - 1, 
+      current_size, 
+    _min_story_index, _min_column_index, _min_row_index,
+    _max_story_index, _max_column_index, _max_row_index);
+  }
+
+  expand_by_one(_grid, 
+      _story_index, _column_index + 1, _row_index, 
+    current_size, 
+  _min_story_index, _min_column_index, _min_row_index,
+  _max_story_index, _max_column_index, _max_row_index);
+
+  if (_column_index >= 1)
+  {
+    expand_by_one(_grid, 
+        _story_index, _column_index - 1, _row_index, 
+      current_size, 
+    _min_story_index, _min_column_index, _min_row_index,
+    _max_story_index, _max_column_index, _max_row_index);
+  }
+
+  expand_by_one(_grid, 
+      _story_index + 1, _column_index, _row_index, 
+    current_size, 
+  _min_story_index, _min_column_index, _min_row_index,
+  _max_story_index, _max_column_index, _max_row_index);
+
+  if (_story_index >= 1)
+  {
+    expand_by_one(_grid, 
+        _story_index - 1, _column_index, _row_index, 
+      current_size, 
+    _min_story_index, _min_column_index, _min_row_index,
+    _max_story_index, _max_column_index, _max_row_index);
+    // clang-format on
+  }
+}
+
 template <char TAxis>
 inline u0
 test_dimension(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid, usize _story_index, usize _column_index, usize _row_index,
@@ -248,102 +344,6 @@ test_dimension(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid, usiz
 #ifdef __clang__
   __builtin_unreachable();
 #endif
-}
-
-inline u0
-expand_by_one(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid, usize _story_index, usize _column_index, usize _row_index,
-              usize& current_size, usize& _min_story_index, usize& _min_column_index, usize& _min_row_index, usize& _max_story_index,
-              usize& _max_column_index, usize& _max_row_index)
-{
-  LOG(INFO) << "new expand_by_one() _story_index: " << _story_index << " _column_index: " << _column_index << " _row_index" << _row_index;
-
-  if (_story_index >= _grid.size())
-  {
-    LOG(INFO) << "hit end!";
-    return;
-  }
-
-  if (_column_index >= _grid[0].size())
-  {
-    LOG(INFO) << "hit end!";
-    return;
-  }
-
-  if (_row_index >= _grid[0][0].size())
-  {
-    LOG(INFO) << "hit end!";
-    return;
-  }
-
-  if (_grid[_story_index][_column_index][_row_index].visited)
-  {
-    LOG(INFO) << "already seen";
-    return;
-  }
-
-  if (!_grid[_story_index][_column_index][_row_index].on)
-  {
-    LOG(INFO) << "hit off block!";
-    return;
-  }
-
-  current_size++;
-  _grid[_story_index][_column_index][_row_index].visited = true;
-
-  _min_story_index  = mmin(_min_story_index, _story_index);
-  _min_column_index = mmin(_min_column_index, _column_index);
-  _min_row_index    = mmin(_min_row_index, _row_index);
-
-  _max_story_index  = mmax(_max_story_index, _story_index);
-  _max_column_index = mmax(_max_column_index, _column_index);
-  _max_row_index    = mmax(_max_row_index, _row_index);
-
-  // clang-format off
-  expand_by_one(_grid, 
-      _story_index, _column_index, _row_index + 1, 
-    current_size, 
-  _min_story_index, _min_column_index, _min_row_index,
-  _max_story_index, _max_column_index, _max_row_index);
-
-  if (_row_index >= 1)
-  {
-    expand_by_one(_grid, 
-        _story_index, _column_index, _row_index - 1, 
-      current_size, 
-    _min_story_index, _min_column_index, _min_row_index,
-    _max_story_index, _max_column_index, _max_row_index);
-  }
-
-  expand_by_one(_grid, 
-      _story_index, _column_index + 1, _row_index, 
-    current_size, 
-  _min_story_index, _min_column_index, _min_row_index,
-  _max_story_index, _max_column_index, _max_row_index);
-
-  if (_column_index >= 1)
-  {
-    expand_by_one(_grid, 
-        _story_index, _column_index - 1, _row_index, 
-      current_size, 
-    _min_story_index, _min_column_index, _min_row_index,
-    _max_story_index, _max_column_index, _max_row_index);
-  }
-
-  expand_by_one(_grid, 
-      _story_index + 1, _column_index, _row_index, 
-    current_size, 
-  _min_story_index, _min_column_index, _min_row_index,
-  _max_story_index, _max_column_index, _max_row_index);
-
-  if (_story_index >= 1)
-  {
-    expand_by_one(_grid, 
-        _story_index - 1, _column_index, _row_index, 
-      current_size, 
-    _min_story_index, _min_column_index, _min_row_index,
-    _max_story_index, _max_column_index, _max_row_index);
-    // clang-format on
-  }
 }
 
 struct Cuboid
