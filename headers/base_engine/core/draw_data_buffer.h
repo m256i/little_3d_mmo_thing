@@ -27,12 +27,12 @@ struct tuple_pack_size<std::tuple<TArgs...>>
 
 template <typename TType>
 concept std_copyable = requires(TType type) {
-  /* we want to be able to copy and also get size information from type */
-  // std::ranges::copy(TType{}, TType{});
-  typename TType::value_type;
-  type.size();
-  type.data();
-};
+                         /* we want to be able to copy and also get size information from type */
+                         // std::ranges::copy(TType{}, TType{});
+                         typename TType::value_type;
+                         type.size();
+                         type.data();
+                       };
 
 constexpr usize
 total_size(const std_copyable auto& ctr)
@@ -70,8 +70,16 @@ struct draw_buffer_impl
   inline draw_buffer_impl(const draw_buffer_impl& other) : cache(other.cache) {}
   inline draw_buffer_impl(draw_buffer_impl&& other) : cache(std::move(other.cache)) {}
 
-  inline decltype(auto) operator=(const draw_buffer_impl & other) { cache = other.cache; }
-  inline decltype(auto) operator=(draw_buffer_impl && other) { cache = std::move(other.cache); }
+  inline decltype(auto)
+  operator=(const draw_buffer_impl& other)
+  {
+    cache = other.cache;
+  }
+  inline decltype(auto)
+  operator=(draw_buffer_impl&& other)
+  {
+    cache = std::move(other.cache);
+  }
 
   template <typename TType, usize TSize>
   constexpr draw_buffer_impl(const TType (&arr)[TSize], usize count)
@@ -176,5 +184,21 @@ struct draw_buf_t
     constexpr usize lane_index{index_of_str<TBufferName>()};
     static_assert(lane_index != (usize)-1, "typo in ctime-buffer name");
     buffer.template load_buffer<lane_index>(_new_data);
+  }
+
+  u0
+  bind()
+  {
+    for_constexpr<0ull, sizeof...(TBufferMembers), 1ull>(
+        [](auto _index)
+        {
+          using buffer_element_type = nth_type<_index, TBufferMembers> glEnableVertexAttribArray(3);
+          glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), (void*)offsetof(vertex_t, tangent));
+        });
+  }
+
+  u0
+  use()
+  {
   }
 };
