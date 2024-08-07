@@ -46,15 +46,11 @@ struct ground_plane_t
     constexpr int static_height = 20;
     int ground_height           = static_height;
 
-    // k = up down
+    // k = up-down
     /* gerenate ground surface */
-
-    puts("pre loading !");
 
     grass_texture.load("D:/git/WoW_Clone/data/texture/grass.png");
     rock_texture.load("D:/git/WoW_Clone/data/texture/rock.png");
-
-    puts("post loading !");
 
     for (int i = 0; i < n; i++)
     {
@@ -62,6 +58,7 @@ struct ground_plane_t
       {
         for (int k = 0; k < n; k++)
         {
+
           auto nv                 = noise.fractal(2, i * 0.101f, j * 0.101f, k * 0.101f);
           ground_height           = (static_height) + (noise.fractal(2, i * 0.01501f, j * 0.01501f) * 3);
           auto distance_to_ground = std::abs(ground_height - k) * 0.55;
@@ -71,10 +68,10 @@ struct ground_plane_t
           }
           if (distance_to_ground == 0)
           {
-            nv = -2;
+            nv = 0;
           }
           nv += 1.f - (1.f / distance_to_ground * 2);
-          std::cout << "noise value: " << nv << "\n";
+
           field[(k * n + j) * n + i] += nv;
         }
       }
@@ -96,11 +93,6 @@ struct ground_plane_t
       vertices.push_back(vertex.x);
       vertices.push_back(vertex.y);
       vertices.push_back(vertex.z);
-
-      std::cout << "vertex added: "
-                << "[ " << vertex.x << ", " << vertex.y << ", " << vertex.z << "]";
-      std::cout << " normal: [ " << normal.x << ", " << normal.y << ", " << normal.z << "]\n";
-
       vertices.push_back(normal.x);
       vertices.push_back(normal.y);
       vertices.push_back(normal.z);
