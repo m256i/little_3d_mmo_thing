@@ -151,8 +151,9 @@ enumerate(auto& _container)
 }
 
 auto
-enumerate(const auto& _container) -> std::vector<
-    std::pair<const std::size_t, std::reference_wrapper<const typename std::remove_reference_t<decltype(_container)>::value_type>>>
+enumerate(const auto& _container)
+    -> std::vector<
+        std::pair<const std::size_t, std::reference_wrapper<const typename std::remove_reference_t<decltype(_container)>::value_type>>>
 {
   std::vector<
       std::pair<const std::size_t, std::reference_wrapper<const typename std::remove_reference_t<decltype(_container)>::value_type>>>
@@ -171,7 +172,7 @@ struct color_t
   u8 r, g, b, a;
 
   color_t(u8 _r, u8 _g, u8 _b, u8 _a) : r(_r), g(_g), b(_b), a(_a) {}
-  color_t(u32 _col) : r(_col >> 24), g((_col >> 16) & 0xff), b((_col >> 8) & 0xff), a((_col)&0xff) {}
+  color_t(u32 _col) : r(_col >> 24), g((_col >> 16) & 0xff), b((_col >> 8) & 0xff), a((_col) & 0xff) {}
 
   u32
   as_u32()
@@ -219,7 +220,7 @@ struct error_t
       if (has_error)
       {
 #ifdef _WIN32
-        MessageBoxA(nullptr, "error_t: was set", 1);
+        MessageBoxA(nullptr, "error_t: was set", 0, 0);
         std::terminate();
         __builtin_unreachable();
 #endif

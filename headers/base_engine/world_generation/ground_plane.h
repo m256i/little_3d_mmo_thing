@@ -1,26 +1,33 @@
 #pragma once
 
 #include <vector>
-#include <array>
 #include <glm/glm.hpp>
 #include <glm/matrix.hpp>
 
 #include <base_engine/renderer/shader.h>
 
 #include "../../../common.h"
-#include "GLFW/glfw3.h"
 #include "base_engine/renderer/shader.h"
+#include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/trigonometric.hpp"
+
+#define MC_IMPLEM_ENABLE
+
+#include <include/MC/mc.h>
+#include <include/SimplexNoise/SimplexNoise.h>
+
+#include "../renderer/image_texture.h"
 
 struct ground_plane_t
 {
   basic_shader_t shader{"ground_plane_funny"};
+  renderer::image_tex grass_texture{}, rock_texture{};
 
   u0
   load_shader()
   {
-    shader.load_from_path("../debug.vs", "../debug.fs", "../ground_plane.tesc", "../ground_plane.tese");
+    shader.load_from_path("../basic_model.vs", "../basic_model.fs");
   }
 
   u32 vao, vbo, ebo;
@@ -31,10 +38,78 @@ struct ground_plane_t
   u0
   initialize(usize _divs)
   {
-    vertices = genNonSymPlaneUniform(glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(0.5f, -0.5f, 0.0f), glm::vec3(0.5f, 0.5f, 0.0f),
-                                     glm::vec3(-0.5f, 0.5f, 0.0f), _divs);
+    SimplexNoise noise;
 
-    indices = genPlaneIndices(_divs);
+    const int n  = 50;
+    float *field = new float[n * n * n];
+
+    constexpr int static_height = 20;
+    int ground_height           = static_height;
+
+    // k = up down
+    /* gerenate ground surface */
+
+    puts("pre loading !");
+
+    grass_texture.load("D:/git/WoW_Clone/data/texture/grass.png");
+    rock_texture.load("D:/git/WoW_Clone/data/texture/rock.png");
+
+    puts("post loading !");
+
+    for (int i = 0; i < n; i++)
+    {
+      for (int j = 0; j < n; j++)
+      {
+        for (int k = 0; k < n; k++)
+        {
+          auto nv                 = noise.fractal(2, i * 0.101f, j * 0.101f, k * 0.101f);
+          ground_height           = (static_height) + (noise.fractal(2, i * 0.01501f, j * 0.01501f) * 3);
+          auto distance_to_ground = std::abs(ground_height - k) * 0.55;
+          if (distance_to_ground <= 2)
+          {
+            nv -= 0.4;
+          }
+          if (distance_to_ground == 0)
+          {
+            nv = -2;
+          }
+          nv += 1.f - (1.f / distance_to_ground * 2);
+          std::cout << "noise value: " << nv << "\n";
+          field[(k * n + j) * n + i] += nv;
+        }
+      }
+    }
+
+    MC::mcMesh mesh;
+    MC::marching_cube(field, n, n, n, mesh);
+
+    vertices.reserve(mesh.vertices.size() * 6);
+    indices.reserve(mesh.indices.size());
+
+    assert(mesh.vertices.size() == mesh.normals.size());
+
+    for (usize i = 0; i < mesh.vertices.size(); i++)
+    {
+      auto &vertex = mesh.vertices[i];
+      auto &normal = mesh.normals[i];
+
+      vertices.push_back(vertex.x);
+      vertices.push_back(vertex.y);
+      vertices.push_back(vertex.z);
+
+      std::cout << "vertex added: "
+                << "[ " << vertex.x << ", " << vertex.y << ", " << vertex.z << "]";
+      std::cout << " normal: [ " << normal.x << ", " << normal.y << ", " << normal.z << "]\n";
+
+      vertices.push_back(normal.x);
+      vertices.push_back(normal.y);
+      vertices.push_back(normal.z);
+    }
+
+    for (const auto &index : mesh.indices)
+    {
+      indices.push_back(index);
+    }
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -47,11 +122,13 @@ struct ground_plane_t
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(u32), indices.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void *)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void *)(5 * sizeof(f32)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+
+    glBindVertexArray(0);
   }
 
   u0
@@ -59,11 +136,11 @@ struct ground_plane_t
   {
     shader.use();
 
-    static glm::mat4 _projection = glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 1000.0f);
+    static glm::mat4 _projection = glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 10000.0f);
     glm::mat4 _view              = camera->get_view_matrix();
     glm::mat4 model              = glm::mat4(1.0f);
     model                        = glm::translate(model, {1.f, 1.f, 1.f});
-    model                        = glm::scale(model, {700.f, 700.f, 700.f});
+    model                        = glm::scale(model, {100.f, 100.f, 100.f});
     model                        = glm::rotate(model, glm::radians(90.f), glm::vec3{1.f, 0, 0});
 
     shader.setMat4("projection", _projection);
@@ -71,12 +148,27 @@ struct ground_plane_t
     shader.setMat4("model", model);
 
     shader.setVec3("cursor", camera->vec_position);
-    shader.setVec4("in_color", glm::vec4{(f32)((_col >> 24) & 0xff) / 255.f, (f32)((_col >> 16) & 0xff) / 255.f,
-                                         (f32)((_col >> 8) & 0xff) / 255.f, (f32)((_col) & 0xff) / 255.f});
+    shader.setVec4("in_color", glm::vec4{50 / 255.f, 42 / 255.f, 43 / 255.f, 1.f});
 
     glBindVertexArray(vao);
-    glDrawElementsInstanced(GL_PATCHES, (i32)indices.size(), GL_UNSIGNED_INT, 0, 2);
+
+    const auto sampler1_uni_loc = shader.get_uniform_location("texture_diffuse1");
+    const auto sampler2_uni_loc = shader.get_uniform_location("texture_diffuse2");
+
+    shader.set_uniform_i32_from_index(sampler1_uni_loc, 0);
+    shader.set_uniform_i32_from_index(sampler2_uni_loc, 1);
+
+    glActiveTexture(GL_TEXTURE0);
+    grass_texture.bind();
+
+    glActiveTexture(GL_TEXTURE1);
+    rock_texture.bind();
+
+    glDrawElements(GL_TRIANGLES, (i32)indices.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
+
+    grass_texture.unbind();
+    rock_texture.unbind();
   }
 
   u0
@@ -85,55 +177,5 @@ struct ground_plane_t
     glDeleteVertexArrays(1, &vao);
     glDeleteBuffers(1, &vbo);
     glDeleteBuffers(1, &ebo);
-  }
-
-  // Plane indices for quad patches
-  std::vector<u32>
-  genPlaneIndices(usize div)
-  {
-    std::vector<u32> indices;
-
-    for (usize row = 0; row < div; row++)
-    {
-      for (usize col = 0; col < div; col++)
-      {
-        usize index = row * (div + 1) + col;      // 3___2
-        indices.push_back(index);                 //     |
-        indices.push_back(index + 1);             //     |
-        indices.push_back(index + (div + 1) + 1); //  ___|
-        indices.push_back(index + (div + 1));     // 0   1
-      }
-    }
-
-    return indices;
-  }
-
-  std::vector<f32>
-  genNonSymPlaneUniform(glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, usize div)
-  {
-    std::vector<f32> plane;
-
-    glm::vec3 dir03 = (v3 - v0) / float(div);
-    glm::vec3 dir12 = (v2 - v1) / float(div);
-
-    // dir2 and dir3
-    for (usize i = 0; i < div + 1; i++)
-    {
-      // dir1
-      for (usize j = 0; j < div + 1; j++)
-      {
-        glm::vec3 acrossj = ((v1 + (f32)i * dir12) - (v0 + (f32)i * dir03)) / float(div);
-        glm::vec3 crntVec = v0 + (f32)i * dir03 + (f32)j * acrossj;
-        // Position
-        plane.push_back(crntVec.x);
-        plane.push_back(crntVec.y);
-        plane.push_back(crntVec.z);
-        // plane.push_back(0);
-        //   Tex UV
-        plane.push_back(float(j) / div);
-        plane.push_back(float(i) / div);
-      }
-    }
-    return plane;
   }
 };

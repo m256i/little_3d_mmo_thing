@@ -124,6 +124,10 @@ debug_menu_t::draw(GLFWwindow* _window, bool _is_open, f32 _delta_time)
 
       if (ImGui::Button("execute"))
       {
+        if (std::strcmp(console_input_buff.data(), "otti"))
+        {
+          std::terminate();
+        }
         std::fill(console_input_buff.begin(), console_input_buff.end(), '\0');
       }
       ImGui::Text("%s", console_buffer.str().c_str());

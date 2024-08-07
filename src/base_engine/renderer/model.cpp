@@ -15,10 +15,6 @@
 #include <base_engine/renderer/shader.h>
 
 #include <string>
-#include <fstream>
-#include <sstream>
-#include <iostream>
-#include <map>
 #include <vector>
 
 #include <logging/easylogging++.h>
@@ -92,9 +88,9 @@ render_model_t::load_render_model(std::string_view path)
 {
   // read file via ASSIMP
   Assimp::Importer importer;
-  const aiScene *scene = importer.ReadFile(
-      path.data(), aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace |
-                       aiProcess_OptimizeMeshes | aiProcess_OptimizeGraph | aiProcess_GenBoundingBoxes);
+  const aiScene *scene =
+      importer.ReadFile(path.data(), aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace |
+                                         aiProcess_OptimizeMeshes | aiProcess_OptimizeGraph | aiProcess_GenBoundingBoxes);
   // check for errors
   if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) // if is Not Zero
   {

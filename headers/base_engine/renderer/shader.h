@@ -18,7 +18,7 @@ struct basic_shader_t
   u32 id{};
   std::string_view debug_name{};
 
-  basic_shader_t(std::string_view _debug_name) : debug_name(_debug_name){};
+  basic_shader_t(std::string_view _debug_name) : debug_name(_debug_name) {};
   basic_shader_t(std::string_view _debug_name, std::string_view _vertex_path, std::string_view _frag_path, std::string_view _tess_path = {},
                  std::string_view _tess_path_eval = {}, const char *_geo_path = nullptr)
       : debug_name(_debug_name)
@@ -37,6 +37,18 @@ struct basic_shader_t
   use() const
   {
     glUseProgram(id);
+  }
+
+  u32
+  get_uniform_location(std::string_view _name)
+  {
+    return glGetUniformLocation(id, _name.data());
+  }
+
+  u0
+  set_uniform_i32_from_index(u32 _uniform_id, i32 _value)
+  {
+    glUniform1i(_uniform_id, (int)_value);
   }
 
   u0

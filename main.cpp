@@ -45,7 +45,6 @@
 #include <include/vhacd/wavefront.h>
 
 #include <base_engine/world_generation/ground_plane.h>
-#include <base_engine/core/draw_data_buffer.h>
 
 constinit f32 lastX = 1920.f / 2.0f;
 constinit f32 lastY = 1080.f / 2.0f;
@@ -138,23 +137,6 @@ main(i32 argc, char** argv) -> i32
   ground_plane_t plane{};
 
   // clang-format off
-  
-  // usage: 
-  static draw_buf_t
-  <
-    buf_elem<"stupi idior", float>,
-    buf_elem<"vertices", glm::vec3>
-  > 
-  impl_test_buffer;
-  
-  static_assert(impl_test_buffer.index_of_str<"vertices">() == 1); // OK!
-  //static_assert(impl_test_buffer.index_of_str<"maaow!">() == 1); // COMPILE ERROR!
-  
-
-  std::vector<glm::vec3> test{{123.f ,2.f ,5.f}};
-
-  impl_test_buffer.load<"vertices">(test);
-  //impl_test_buffer.load<"maodw!">(std::tuple{1,2,3}); // COMPILE ERROR!
 
   // clang-format on
 
@@ -194,7 +176,7 @@ main(i32 argc, char** argv) -> i32
       .loop(
           [&](GLFWwindow* _window)
           {
-            glClearColor(55.f / 255.f, 55.f / 255.f, 182.f / 255.f, 1);
+            glClearColor(77 / 255.f, 77 / 255.f, 102 / 255.f, 1.f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             process_input(_window);
@@ -216,28 +198,6 @@ main(i32 argc, char** argv) -> i32
 
             auto& cam = game_renderer.game_camera;
             plane.draw(game_renderer.display_w, game_renderer.display_h, &game_renderer.game_camera, 0xffffffff);
-
-            glPointSize(5);
-
-            for (auto& vgrid : vgrids)
-            {
-              // vgrid.second.draw();
-              //  if (auto voxel = vgrid.second.find(cam.vec_position); voxel != nullptr)
-              //{
-              //    debug_overlay_t::draw_AABB(voxel->bbox.min, voxel->bbox.max, 0x0302ffff, true);
-              //    for (const auto& tri : voxel->triangles_inside)
-              //    {
-              //      debug_overlay_t::draw_point(tri.a, 0xff0000ff, true);
-              //      debug_overlay_t::draw_point(tri.b, 0xff0000ff, true);
-              //      debug_overlay_t::draw_point(tri.c, 0xff0000ff, true);
-              //    }
-              //  }
-
-              // auto largest_cube = vgrid.second.fint_largest_sub_cuboid(vgrid.second.grid);
-              // debug_overlay_t::draw_AABB(largest_cube.first.min, largest_cube.first.max, 0x0202ffff, true);
-            }
-
-            glPointSize(1);
 
             debug_menu.print_stdcout();
             debug_menu.draw(_window, in_menu, deltaTime);

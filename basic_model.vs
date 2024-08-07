@@ -20,7 +20,7 @@ main()
   camera_distance = length(view * model * vec4(aPos, 1.0) - vec4(camera_pos, 0));
 
   TexCoords   = aTexCoords;
-  Normal      = aNormal;
+  Normal      = normalize(mat3(transpose(inverse(model))) * aNormal);
   Pos         = aPos;
   gl_Position = projection * view * model * vec4(aPos, 1.0);
   uvs         = aTexCoords;
