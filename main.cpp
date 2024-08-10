@@ -20,11 +20,13 @@
 #include <utility>
 #include "base_engine/physics_system/chull.h"
 #include "base_engine/renderer/model_renderer.h"
+#include "base_engine/renderer/static_world_model.h"
 #include "common.h"
 
 #include "assimp/aabb.h"
 #include "assimp/vector3.h"
 #include "common.h"
+#include "glm/fwd.hpp"
 #include "glm/geometric.hpp"
 #include "glm/matrix.hpp"
 #include "headers/base_engine/renderer/model_renderer.h"
@@ -45,6 +47,9 @@
 #include <include/vhacd/wavefront.h>
 
 #include <base_engine/world_generation/ground_plane.h>
+
+#include <base_engine/renderer/instanced_model.h>
+#include <base_engine/renderer/core/frame_buffer.h>
 
 constinit f32 lastX = 1920.f / 2.0f;
 constinit f32 lastY = 1080.f / 2.0f;
@@ -134,11 +139,15 @@ main(i32 argc, char** argv) -> i32
 
   std::unordered_map<u32, voxel_grid_t> vgrids;
 
+  instanced_static_world_model instanced_model{1}, instanced_model2{1};
+
   ground_plane_t plane{};
 
-  // clang-format off
+  static_world_model_t skybox3d_model{"skybox"};
 
-  // clang-format on
+  pp_fs_texture post_processor;
+
+  usize pp_pass1;
 
   return create_window("WoW Clone :D", false)
       .register_callback(glfwSetCursorPosCallback, mouse_callback)
@@ -149,7 +158,61 @@ main(i32 argc, char** argv) -> i32
             debug_overlay_t::init(_window, game_renderer.game_camera);
 
             game_renderer.update_frame_buffer(_window);
-            // game_renderer.model_renderer.add_model("dungeon", "../data/blackrock_lower_instance.obj");
+
+            post_processor.initialize(1920, 1080); // @FIXME: cleanup
+            pp_pass1 = post_processor.add_post_pass(
+                R"(
+#version 430 core
+out vec4 FragColor;
+in vec2 TexCoords;
+uniform sampler2D texture_diffuse;
+
+void main()
+{
+
+  vec3 col =vec3(1,1,1) - texture(texture_diffuse, TexCoords).rgb;
+  //float avg = (col.r + col.g + col.b) / 3;
+ // FragColor = vec4(1-avg,1-avg,1-avg, 1);
+  FragColor = vec4(col, 1);
+}
+
+)");
+
+            plane.load_shader();
+            plane.initialize(0);
+
+            game_renderer.model_renderer.add_static_world_model("tree1", "../data/trees/trees/westfalltree03.obj");
+
+            instanced_model.load_model("../data/trees/trees/westfalltree03.obj");
+            instanced_model.init_shader("../basic_model_instanced.vs", "../basic_model_instanced.fs");
+
+            instanced_model2.load_model("../data/minerals/veb_rocks06.obj");
+            instanced_model2.init_shader("../basic_model_instanced.vs", "../basic_model_instanced.fs");
+
+            skybox3d_model.load_model("../data/sky/3d/dalaranskybox.obj");
+            skybox3d_model.init_shader("../3d_sky_box.vs", "../3d_sky_box.fs");
+
+            static constexpr int county = 5;
+
+            instanced_model.set_instance_count(county * county);
+            instanced_model2.set_instance_count(county * county);
+
+            for (usize i = 0; i < county * county; ++i)
+            {
+              auto& instance_data  = instanced_model.get_instance_data()[i];
+              auto& instance_data2 = instanced_model2.get_instance_data()[i];
+
+              instance_data.world_position  = {(i % county) * 50.f, -107.f, (i / county) * 50.f};
+              instance_data.world_scale     = {15, 15, 15};
+              instance_data2.world_position = {(i % county) * 50.f + 10.f, -107.f, (i / county) * 50.f + 10.f};
+              instance_data2.world_scale    = {15, 15, 15};
+
+              instanced_model.apply_translation_at(i);
+              instanced_model2.apply_translation_at(i);
+            }
+
+            instanced_model.buffer();
+            instanced_model2.buffer();
 
             // for (const auto& mesh : game_renderer.model_renderer.static_world_models.at("dungeon").draw_model.meshes)
             //{
@@ -168,18 +231,17 @@ main(i32 argc, char** argv) -> i32
             // }
 
             // TODO: system to make here! should be set once when all of the tesselation shit gets drawn
-            glPatchParameteri(GL_PATCH_VERTICES, 4);
-
-            plane.load_shader();
-            plane.initialize(8);
+            // glPatchParameteri(GL_PATCH_VERTICES, 4);
           })
       .loop(
           [&](GLFWwindow* _window)
           {
-            glClearColor(77 / 255.f, 77 / 255.f, 102 / 255.f, 1.f);
+            glClearColor(0, 0, 0, 0.f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             process_input(_window);
+
+            post_processor.update_size(1920, 1080);
 
             f32 currentFrame = (f32)glfwGetTime();
             deltaTime        = currentFrame - lastFrame;
@@ -188,19 +250,33 @@ main(i32 argc, char** argv) -> i32
             f64 cX, cY;
             glfwGetCursorPos(_window, &cX, &cY);
 
-            // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-            // game_renderer.render();
+            glm::mat4 projection = glm::perspective(glm::radians(game_renderer.game_camera.fov), (float)1920 / (float)1080, 0.1f, 10'000.f);
+            glm::mat4 view       = game_renderer.game_camera.get_view_matrix();
 
-            // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            skybox3d_model.vec_position = game_renderer.game_camera.vec_position;
+            skybox3d_model.vec_rotation = glm::vec3{0, (f32)glfwGetTime() / 60.f, 0};
 
-            // auto collision_meshes = tree.find(game_renderer.game_camera.vec_position);
+            const auto renderings = [&]() {};
 
-            auto& cam = game_renderer.game_camera;
+            skybox3d_model.draw(projection, view);
+            glClear(GL_DEPTH_BUFFER_BIT);
+
             plane.draw(game_renderer.display_w, game_renderer.display_h, &game_renderer.game_camera, 0xffffffff);
+            instanced_model2.draw(projection, view);
+            instanced_model.draw(projection, view);
+
+            // post_processor.bake(pp_pass1, renderings);
+            // post_processor.draw(pp_pass1);
+
+            // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            // auto collision_meshes = tree.find(game_renderer.game_camera.vec_position);
 
             debug_menu.print_stdcout();
             debug_menu.draw(_window, in_menu, deltaTime);
+            // game_renderer.render();
           })
       .stdexit();
 }

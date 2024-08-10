@@ -62,11 +62,9 @@ struct mesh_t
   }
 
   // render the mesh
-  void
-  draw(const basic_shader_t &shader) const;
+  void draw(const basic_shader_t &shader, usize instance_count = 1) const;
   // render data
 
   // initializes all the buffer objects/arrays
-  void
-  bind_mesh_data();
+  void bind_mesh_data();
 };

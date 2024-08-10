@@ -1,17 +1,10 @@
 #pragma once
 
 #include <glm/glm.hpp>
-
-#include <string>
 #include <string_view>
-#include <fstream>
-#include <sstream>
-#include <iostream>
-
 #include <logging/easylogging++.h>
 #include <glad/glad.h>
-
-#include "../../../common.h"
+#include <common.h>
 
 struct basic_shader_t
 {

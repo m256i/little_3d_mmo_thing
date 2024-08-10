@@ -36,18 +36,15 @@ public:
   bool gamme_corretion;
 
   // constructor, expects a filepath to a 3D model.
-  explicit render_model_t(std::string const &path, bool gamma = false) : gamme_corretion(gamma)
-  {
-    load_render_model(path);
-  }
+  explicit render_model_t(std::string const &path, bool gamma = false) : gamme_corretion(gamma) { load_render_model(path); }
 
   // draws the model, and thus all its meshes
   void
-  draw(const basic_shader_t &_shader) const
+  draw(const basic_shader_t &_shader, usize instance_count = 1) const
   {
     for (auto &mesh : meshes)
     {
-      mesh.draw(_shader);
+      mesh.draw(_shader, instance_count);
     }
   }
 

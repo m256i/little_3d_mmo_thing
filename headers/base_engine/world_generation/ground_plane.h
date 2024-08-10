@@ -17,7 +17,7 @@
 #include <include/MC/mc.h>
 #include <include/SimplexNoise/SimplexNoise.h>
 
-#include "../renderer/image_texture.h"
+#include "../renderer/core/image_texture.h"
 
 struct ground_plane_t
 {
@@ -27,13 +27,21 @@ struct ground_plane_t
   u0
   load_shader()
   {
-    shader.load_from_path("../basic_model.vs", "../basic_model.fs");
+    shader.load_from_path("../world_mesh.vs", "../world_mesh.fs");
   }
 
   u32 vao, vbo, ebo;
 
+  struct mc_tri_vert
+  {
+    glm::vec3 pos;
+    glm::vec3 normal;
+  };
+
   std::vector<f32> vertices{};
   std::vector<u32> indices{};
+
+  std::vector<mc_tri_vert> vertices_;
 
   u0
   initialize(usize _divs)
@@ -90,6 +98,8 @@ struct ground_plane_t
       auto &vertex = mesh.vertices[i];
       auto &normal = mesh.normals[i];
 
+      // vertices_.push_back({{vertex.x, vertex.y, vertex.z}, {normal.x, normal.y, normal.z}});
+
       vertices.push_back(vertex.x);
       vertices.push_back(vertex.y);
       vertices.push_back(vertex.z);
@@ -128,7 +138,7 @@ struct ground_plane_t
   {
     shader.use();
 
-    static glm::mat4 _projection = glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 10000.0f);
+    static glm::mat4 _projection = glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 10'000.f);
     glm::mat4 _view              = camera->get_view_matrix();
     glm::mat4 model              = glm::mat4(1.0f);
     model                        = glm::translate(model, {1.f, 1.f, 1.f});

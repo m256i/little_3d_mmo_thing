@@ -54,6 +54,16 @@ load_texture_from_file(std::string_view path, std::string_view directory, u32 &_
     case 4:
     {
       format = (u32)GL_RGBA;
+
+      for (int i = 0; i < width * height * 4; i += 4)
+      {
+        float alpha = data[i + 3] / 255.0f;
+        data[i]     = static_cast<unsigned char>(data[i] * alpha);     // R
+        data[i + 1] = static_cast<unsigned char>(data[i + 1] * alpha); // G
+        data[i + 2] = static_cast<unsigned char>(data[i + 2] * alpha); // B
+                                                                       // data[i + 3] is already the alpha channel
+      }
+
       break;
     }
     default:

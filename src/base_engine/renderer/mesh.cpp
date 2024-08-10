@@ -12,7 +12,6 @@
 #include <array>
 #include <string>
 
-
 #include "../../common.h"
 
 #ifdef min
@@ -24,7 +23,7 @@
 #endif
 
 void
-mesh_t::draw(const basic_shader_t &shader) const
+mesh_t::draw(const basic_shader_t &shader, usize instance_count) const
 {
   // bind appropriate textures
   u32 diffuseNr  = 1;
@@ -62,7 +61,16 @@ mesh_t::draw(const basic_shader_t &shader) const
 
   // draw mesh
   glBindVertexArray(VAO);
-  glDrawElements(GL_TRIANGLES, static_cast<unsigned int>(indices.size()), GL_UNSIGNED_INT, 0);
+
+  if (instance_count > 1) [[unlikely]]
+  {
+    glDrawElementsInstanced(GL_TRIANGLES, static_cast<unsigned int>(indices.size()), GL_UNSIGNED_INT, 0, instance_count);
+  }
+  else
+  {
+    glDrawElements(GL_TRIANGLES, static_cast<unsigned int>(indices.size()), GL_UNSIGNED_INT, 0);
+  }
+
   glBindVertexArray(0);
 
   // always good practice to set everything back to defaults once configured.

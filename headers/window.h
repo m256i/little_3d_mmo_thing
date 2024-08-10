@@ -1,11 +1,69 @@
 #pragma once
-#include <concepts>
+
 #include <iostream>
 #include <string_view>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #include "../common.h"
+
+inline std::string
+decodeDebugSource(GLenum source)
+{
+  switch (source)
+  {
+  case GL_DEBUG_SOURCE_API:
+    return "API";
+  case GL_DEBUG_SOURCE_WINDOW_SYSTEM:
+    return "Window System";
+  case GL_DEBUG_SOURCE_SHADER_COMPILER:
+    return "Shader Compiler";
+  case GL_DEBUG_SOURCE_THIRD_PARTY:
+    return "Third Party";
+  case GL_DEBUG_SOURCE_APPLICATION:
+    return "Application";
+  case GL_DEBUG_SOURCE_OTHER:
+    return "Other";
+  default:
+    return "Unknown Source";
+  }
+}
+
+inline std::string
+decodeDebugType(GLenum type)
+{
+  switch (type)
+  {
+  case GL_DEBUG_TYPE_ERROR:
+    return "Error";
+  case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+    return "Deprecated Behavior";
+  case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+    return "Undefined Behavior";
+  case GL_DEBUG_TYPE_PORTABILITY:
+    return "Portability";
+  case GL_DEBUG_TYPE_PERFORMANCE:
+    return "Performance";
+  case GL_DEBUG_TYPE_MARKER:
+    return "Marker";
+  case GL_DEBUG_TYPE_PUSH_GROUP:
+    return "Push Group";
+  case GL_DEBUG_TYPE_POP_GROUP:
+    return "Pop Group";
+  case GL_DEBUG_TYPE_OTHER:
+    return "Other";
+  default:
+    return "Unknown Type";
+  }
+}
+
+inline void GLAPIENTRY
+glDebugCallbackFunc(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+{
+  std::cerr << "OpenGL Debug Message:"
+            << " Source: " << decodeDebugSource(source) << " Type: " << decodeDebugType(type) << " ID: " << id << " Severity: " << severity
+            << " Message: " << message << std::endl;
+}
 
 struct game_window_t
 {
@@ -21,10 +79,6 @@ struct game_window_t
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
-#ifdef __apple__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-#endif
-
     i32 monitor_count{};
 
     GLFWmonitor** monitor_pointer = glfwGetMonitors(&monitor_count);
@@ -34,7 +88,6 @@ struct game_window_t
     window_height = vmode->height;
 
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-    glfwWindowHint(GLFW_SAMPLES, 4);
 
     window = glfwCreateWindow(window_width, window_height, _name.data(), *monitor_pointer, nullptr);
 
@@ -45,6 +98,9 @@ struct game_window_t
       return;
     }
 
+    glfwWindowHint(GLFW_SAMPLES, 16);
+    glfwWindowHint(GLFW_DEPTH_BITS, 32); // Request a 24-bit depth buffer
+
     glfwMakeContextCurrent(window);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) [[unlikely]]
@@ -53,6 +109,9 @@ struct game_window_t
       return;
     }
 
+    glEnable(GL_MULTISAMPLE);
+    glEnable(GL_DEPTH_TEST | GL_DEPTH_BUFFER_BIT);
+
     // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     glfwSwapInterval(0);
@@ -60,9 +119,10 @@ struct game_window_t
     glfwSetWindowPos(window, 0, 0);
     glfwShowWindow(window);
 
-    glEnable(GL_DEPTH_TEST | GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_MULTISAMPLE);
     glEnable(GL_BLEND);
+
+    // glEnable(GL_DEBUG_OUTPUT);
+    // glDebugMessageCallback(glDebugCallbackFunc, 0);
   }
 
   ~game_window_t() { glfwDestroyWindow(window); }

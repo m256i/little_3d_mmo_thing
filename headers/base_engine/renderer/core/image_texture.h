@@ -11,6 +11,8 @@ namespace renderer
 {
 struct image_tex
 {
+
+  /* TODO handle differnt channel types */
   u0
   load(const char* _path)
   {
@@ -21,7 +23,7 @@ struct image_tex
     {
       glGenTextures(1, &tex_handle);
       glBindTexture(GL_TEXTURE_2D, tex_handle);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size_x, size_y, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size_x, size_y, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
       glGenerateMipmap(GL_TEXTURE_2D);
 
       // Set texture wrapping and filtering options
