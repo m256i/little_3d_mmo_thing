@@ -21,7 +21,6 @@
 #include <base_engine/physics_system/bbox.h>
 #include <base_engine/physics_system/intersect.h>
 #include <vhacd/wavefront.h>
-#include <qms/Simplify.h>
 
 #ifdef min
 #undef min
@@ -192,10 +191,6 @@ convex_hull_t::to_submeshes()
 
   WavefrontObj new_obj;
   new_obj.loadObj("../data/duskwoodchapel2.obj");
-
-  Simplify::load_obj("../data/duskwoodchapel.obj");
-  Simplify::simplify_mesh(Simplify::triangles.size(), 4.f, true);
-  Simplify::write_obj("../data/duskwoodchapel2.obj");
 
   Logging logging;
   VHACD::IVHACD::Parameters p;

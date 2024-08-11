@@ -29,13 +29,14 @@ main()
   float light   = clamp(0.1 + clamp(dot(pointing, Normal), 0.0, 1.0), 0.0, 1.0);
 
   vec4 textColor1 = ((texture(texture_diffuse1, uv)));
-  // if (textColor1.a == 0) discard;
+  if (textColor1.a < 0.5) discard;
+  // FragColor = textColor1;
 
   float fog_mask = clamp((1 / (dist / FOG_DISTANCE)), 0, 1);
-  textColor1     = clamp(textColor1, vec4(0, 0, 0, 0), textColor1) * fog_mask + vec4(light * col, 1) * fog_mask;
+  textColor1     = clamp(textColor1, vec4(0, 0, 0, 0), textColor1) * fog_mask;
 
   vec4 fogColor = FOG_COLOR * (1 - fog_mask);
-  fogColor      = clamp(fogColor, vec4(0, 0, 0, 1), vec4(1, 1, 1, 1));
+  fogColor      = clamp(fogColor, vec4(0, 0, 0, 0), vec4(1, 1, 1, 1));
 
   FragColor = textColor1 + fogColor;
 }

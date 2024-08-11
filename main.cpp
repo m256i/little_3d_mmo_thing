@@ -29,6 +29,8 @@
 #include "glm/fwd.hpp"
 #include "glm/geometric.hpp"
 #include "glm/matrix.hpp"
+#include "headers/base_engine/renderer/core/lod.h"
+#include "headers/base_engine/renderer/model.h"
 #include "headers/base_engine/renderer/model_renderer.h"
 #include "headers/window.h"
 
@@ -46,7 +48,7 @@
 #include "headers/logging/easylogging++.h"
 #include <include/vhacd/wavefront.h>
 
-#include <base_engine/world_generation/ground_plane.h>
+#include <base_engine/world_generation/ground_mesh.h>
 
 #include <base_engine/renderer/instanced_model.h>
 #include <base_engine/renderer/core/frame_buffer.h>
@@ -141,7 +143,9 @@ main(i32 argc, char** argv) -> i32
 
   instanced_static_world_model instanced_model{1}, instanced_model2{1};
 
-  ground_plane_t plane{};
+  lod_static_world_model_t LOD_tree{"lod_test_tree"};
+
+  ground_mesh_chunk_t plane{};
 
   static_world_model_t skybox3d_model{"skybox"};
 
@@ -214,6 +218,9 @@ void main()
             instanced_model.buffer();
             instanced_model2.buffer();
 
+            LOD_tree.load_model("../data/trees/trees/9ard_ardenweald_largetree04.obj");
+            LOD_tree.init_shader();
+
             // for (const auto& mesh : game_renderer.model_renderer.static_world_models.at("dungeon").draw_model.meshes)
             //{
             //   std::vector<triangle_t> tris;
@@ -267,12 +274,13 @@ void main()
             plane.draw(game_renderer.display_w, game_renderer.display_h, &game_renderer.game_camera, 0xffffffff);
             instanced_model2.draw(projection, view);
             instanced_model.draw(projection, view);
+            LOD_tree.draw(projection, view, lod::detail_level::lod_detail_potato);
 
             // post_processor.bake(pp_pass1, renderings);
             // post_processor.draw(pp_pass1);
 
             // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            // auto collision_meshes = tree.find(game_renderer.game_camera.vec_position);
+            //   auto collision_meshes = tree.find(game_renderer.game_camera.vec_position);
 
             debug_menu.print_stdcout();
             debug_menu.draw(_window, in_menu, deltaTime);

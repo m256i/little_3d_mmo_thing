@@ -7,6 +7,7 @@
 #include <base_engine/renderer/shader.h>
 
 #include "../../../common.h"
+#include "base_engine/renderer/core/image_texture.h"
 #include "base_engine/renderer/shader.h"
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
@@ -19,10 +20,11 @@
 
 #include "../renderer/core/image_texture.h"
 
-struct ground_plane_t
+struct ground_mesh_chunk_t
 {
   basic_shader_t shader{"ground_plane_funny"};
-  renderer::image_tex grass_texture{}, rock_texture{};
+  renderer::image_tex_lod grass_texture{};
+  renderer::image_tex_lod rock_texture{};
 
   u0
   load_shader()
@@ -66,7 +68,6 @@ struct ground_plane_t
       {
         for (int k = 0; k < n; k++)
         {
-
           auto nv                 = noise.fractal(2, i * 0.101f, j * 0.101f, k * 0.101f);
           ground_height           = (static_height) + (noise.fractal(2, i * 0.01501f, j * 0.01501f) * 3);
           auto distance_to_ground = std::abs(ground_height - k) * 0.55;
@@ -161,10 +162,10 @@ struct ground_plane_t
     shader.set_uniform_i32_from_index(sampler2_uni_loc, 1);
 
     glActiveTexture(GL_TEXTURE0);
-    grass_texture.bind();
+    grass_texture.bind(lod::detail_level::lod_detail_potato);
 
     glActiveTexture(GL_TEXTURE1);
-    rock_texture.bind();
+    rock_texture.bind(lod::detail_level::lod_detail_potato);
 
     glDrawElements(GL_TRIANGLES, (i32)indices.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);

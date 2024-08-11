@@ -18,6 +18,9 @@ endforeach
 
 cmake           = import('cmake')
 
+meshopt_lib = cmake.subproject('meshoptimizer')
+meshopt_target = meshopt_lib.dependency('meshoptimizer')
+
 root_path       = meson.global_source_root()
 lib_path        = root_path / 'libs'
 include_path    = 'include'
@@ -62,7 +65,7 @@ executable(
   'WoWClone',
   [sources],
   include_directories : [include_path, headers_path],
-  dependencies : [],
+  dependencies : [meshopt_target],
   cpp_args : ['-O3', '-g','-march=native', '-fno-rtti', useless_warnings],
   link_args : [windows_link_args],
   install : true

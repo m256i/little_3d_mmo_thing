@@ -34,7 +34,7 @@ debug_menu_t::init_menu(GLFWwindow* _window)
   ImGui_ImplOpenGL3_Init("#version 330");
 
   // redirect console out
-  old = std::cout.rdbuf(console_buffer.rdbuf());
+  // old = std::cout.rdbuf(console_buffer.rdbuf());
 }
 
 u0
