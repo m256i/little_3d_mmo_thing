@@ -256,90 +256,90 @@ test_dimension(std::vector<std::vector<std::vector<voxel_block_t>>>& _grid, usiz
 {
   LOG(INFO) << "new expand_by_one() _story_index: " << _story_index << " _column_index: " << _column_index << " _row_index" << _row_index;
 
-  if constexpr (TAxis == 'y')
-  {
-    if (_story_index >= _grid.size())
-    {
-      LOG(INFO) << "hit end!";
-      return;
-    }
-  }
-  else if constexpr (TAxis == 'z')
-  {
-    if (_column_index >= _grid[0].size())
-    {
-      LOG(INFO) << "hit end!";
-      return;
-    }
-  }
-  else if constexpr (TAxis == 'x')
-  {
-    if (_row_index >= _grid[0][0].size())
-    {
-      LOG(INFO) << "hit end!";
-      return;
-    }
-  }
-
-  // if (_grid[_story_index][_column_index][_row_index].visited)
+  // if constexpr (TAxis == 'y')
   // {
-  //   LOG(INFO) << "already seen";
+  //   if (_story_index >= _grid.size())
+  //   {
+  //     LOG(INFO) << "hit end!";
+  //     return;
+  //   }
+  // }
+  // else if constexpr (TAxis == 'z')
+  // {
+  //   if (_column_index >= _grid[0].size())
+  //   {
+  //     LOG(INFO) << "hit end!";
+  //     return;
+  //   }
+  // }
+  // else if constexpr (TAxis == 'x')
+  // {
+  //   if (_row_index >= _grid[0][0].size())
+  //   {
+  //     LOG(INFO) << "hit end!";
+  //     return;
+  //   }
+  // }
+
+  // // if (_grid[_story_index][_column_index][_row_index].visited)
+  // // {
+  // //   LOG(INFO) << "already seen";
+  // //   return;
+  // // }
+
+  // if (!_grid[_story_index][_column_index][_row_index].on)
+  // {
+  //   LOG(INFO) << "hit off block!";
   //   return;
   // }
 
-  if (!_grid[_story_index][_column_index][_row_index].on)
-  {
-    LOG(INFO) << "hit off block!";
-    return;
-  }
+  // current_size++;
 
-  current_size++;
+  // // clang-format off
 
-  // clang-format off
-  
-  if constexpr (TAxis == 'x')
-  {
-    expand_by_one(_grid, 
-        _story_index, _column_index, _row_index + 1, 
-      current_size
-    );
-    if (_row_index >= 1)
-    {
-      expand_by_one(_grid, 
-          _story_index, _column_index, _row_index - 1, 
-        current_size
-      );
-    }
-  }
-  else if constexpr (TAxis == 'z')
-  {
-    expand_by_one(_grid, 
-        _story_index, _column_index + 1, _row_index, 
-      current_size
-    );
-    if (_column_index >= 1)
-    {
-      expand_by_one(_grid, 
-          _story_index, _column_index - 1, _row_index, 
-        current_size
-      );
-    }
-  }
-  else if constexpr (TAxis == 'y')
-  {
-    expand_by_one(_grid, 
-        _story_index + 1, _column_index, _row_index, 
-      current_size
-    );
-    if (_story_index >= 1)
-    {
-      expand_by_one(_grid, 
-          _story_index - 1, _column_index, _row_index, 
-        current_size
-      );
-    }
-    // clang-format on
-  }
+  // if constexpr (TAxis == 'x')
+  // {
+  //   expand_by_one(_grid,
+  //       _story_index, _column_index, _row_index + 1,
+  //     current_size
+  //   );
+  //   if (_row_index >= 1)
+  //   {
+  //     expand_by_one(_grid,
+  //         _story_index, _column_index, _row_index - 1,
+  //       current_size
+  //     );
+  //   }
+  // }
+  // else if constexpr (TAxis == 'z')
+  // {
+  //   expand_by_one(_grid,
+  //       _story_index, _column_index + 1, _row_index,
+  //     current_size
+  //   );
+  //   if (_column_index >= 1)
+  //   {
+  //     expand_by_one(_grid,
+  //         _story_index, _column_index - 1, _row_index,
+  //       current_size
+  //     );
+  //   }
+  // }
+  // else if constexpr (TAxis == 'y')
+  // {
+  //   expand_by_one(_grid,
+  //       _story_index + 1, _column_index, _row_index,
+  //     current_size
+  //   );
+  //   if (_story_index >= 1)
+  //   {
+  //     expand_by_one(_grid,
+  //         _story_index - 1, _column_index, _row_index,
+  //       current_size
+  //     );
+  //   }
+  //   // clang-format on
+  // }
 
 #ifdef __clang__
   __builtin_unreachable();

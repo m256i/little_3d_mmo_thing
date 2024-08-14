@@ -11,6 +11,7 @@
 #include "base_engine/renderer/shader.h"
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
+#include "glm/fwd.hpp"
 #include "glm/trigonometric.hpp"
 
 #define MC_IMPLEM_ENABLE
@@ -20,11 +21,22 @@
 
 #include "../renderer/core/image_texture.h"
 
+#include "../renderer/core/lod.h"
+
+#include <meshoptimizer.h>
+
+/* handles LOD levels internally */
+
 struct ground_mesh_chunk_t
 {
   basic_shader_t shader{"ground_plane_funny"};
+
   renderer::image_tex_lod grass_texture{};
   renderer::image_tex_lod rock_texture{};
+
+  f64 scale_xyz = 100.f;
+
+  glm::vec3 world_position{0, 0, 0};
 
   u0
   load_shader()
@@ -34,54 +46,61 @@ struct ground_mesh_chunk_t
 
   u32 vao, vbo, ebo;
 
-  struct mc_tri_vert
-  {
-    glm::vec3 pos;
-    glm::vec3 normal;
-  };
-
   std::vector<f32> vertices{};
   std::vector<u32> indices{};
 
-  std::vector<mc_tri_vert> vertices_;
+  const i32 grid_size = 50;
 
   u0
-  initialize(usize _divs)
+  initialize(usize _divs, i32 chunk_scale, glm::vec3 _coords = glm::vec3{0, 0, 0})
   {
     SimplexNoise noise;
+    grass_texture.load("../data/texture/grass.png");
+    rock_texture.load("../data/texture/rock.png");
 
-    const int n  = 50;
+    const f32 coord_scale = (f32)grid_size / chunk_scale;
+
+    const i32 n  = grid_size + 1;
     float *field = new float[n * n * n];
 
-    constexpr int static_height = 20;
-    int ground_height           = static_height;
+    const i32 static_height = n / 2.f;
+    i32 ground_height       = static_height;
 
     // k = up-down
     /* gerenate ground surface */
 
-    grass_texture.load("D:/git/WoW_Clone/data/texture/grass.png");
-    rock_texture.load("D:/git/WoW_Clone/data/texture/rock.png");
-
-    for (int i = 0; i < n; i++)
+    for (i32 x = 0; x < n; ++x)
     {
-      for (int j = 0; j < n; j++)
+      for (i32 y = 0; y < n; ++y)
       {
-        for (int k = 0; k < n; k++)
+        for (i32 z = 0; z < n; ++z)
         {
-          auto nv                 = noise.fractal(2, i * 0.101f, j * 0.101f, k * 0.101f);
-          ground_height           = (static_height) + (noise.fractal(2, i * 0.01501f, j * 0.01501f) * 3);
-          auto distance_to_ground = std::abs(ground_height - k) * 0.55;
-          if (distance_to_ground <= 2)
-          {
-            nv -= 0.4;
-          }
+          // @m256i scripting interface for terrain generation should go here
+          auto nv = noise.fractal(1, (x + (_coords.x * coord_scale)) * 0.101f, (y + (_coords.y * coord_scale)) * 0.101f,
+                                  (z + (_coords.z * coord_scale)) * 0.101f);
+          // auto nv = noise.fractal(2, (x + _coords.x), (y + _coords.y), (z + _coords.z));
+          // ground_height           = (static_height) + (noise.fractal(2, (x + _coords.x) * 0.01501f, (z + _coords.z) * 0.01501f));
+          ground_height =
+              (static_height) + (noise.fractal(1, (x + (_coords.x * coord_scale)) * 0.0075, (z + (_coords.z * coord_scale)) * 0.0075)) * 10;
+          auto distance_to_ground = std::abs(ground_height - y) * 0.55;
+
+          // if (distance_to_ground <= 2)
+          //{
+          //   nv -= 0.4;
+          // }
+
+          // float nv = 0;
+
           if (distance_to_ground == 0)
           {
-            nv = 0;
+            nv = -1.f;
           }
+
           nv += 1.f - (1.f / distance_to_ground * 2);
 
-          field[(k * n + j) * n + i] += nv;
+          nv = std::clamp(nv, -1.f, 1.f);
+
+          field[(x * n + y) * n + z] = nv;
         }
       }
     }
@@ -99,11 +118,10 @@ struct ground_mesh_chunk_t
       auto &vertex = mesh.vertices[i];
       auto &normal = mesh.normals[i];
 
-      // vertices_.push_back({{vertex.x, vertex.y, vertex.z}, {normal.x, normal.y, normal.z}});
-
       vertices.push_back(vertex.x);
       vertices.push_back(vertex.y);
       vertices.push_back(vertex.z);
+
       vertices.push_back(normal.x);
       vertices.push_back(normal.y);
       vertices.push_back(normal.z);
@@ -125,33 +143,36 @@ struct ground_mesh_chunk_t
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(u32), indices.data(), GL_STATIC_DRAW);
 
+    // coords
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
 
+    // normals
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
+    delete[] field;
   }
 
   u0
-  draw(auto display_w, auto display_h, auto camera, u32 _col)
+  draw(auto display_w, auto display_h, auto &camera, lod::detail_level lod_level, u32 _col)
   {
     shader.use();
 
-    static glm::mat4 _projection = glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 10'000.f);
-    glm::mat4 _view              = camera->get_view_matrix();
+    static glm::mat4 _projection = glm::perspective(glm::radians(camera.fov), (float)display_w / (float)display_h, 0.1f, 10'000.f);
+    glm::mat4 _view              = camera.get_view_matrix();
     glm::mat4 model              = glm::mat4(1.0f);
-    model                        = glm::translate(model, {1.f, 1.f, 1.f});
-    model                        = glm::scale(model, {100.f, 100.f, 100.f});
-    model                        = glm::rotate(model, glm::radians(90.f), glm::vec3{1.f, 0, 0});
+
+    model = glm::translate(model, {world_position.x * grid_size, world_position.y * grid_size, world_position.z * grid_size});
+    model = glm::scale(model, {scale_xyz, scale_xyz, scale_xyz});
+
+    // idk why i even rotate this
+    // model = glm::rotate(model, glm::radians(90.f), glm::vec3{1.f, 0, 0});
 
     shader.setMat4("projection", _projection);
     shader.setMat4("view", _view);
     shader.setMat4("model", model);
-
-    shader.setVec3("cursor", camera->vec_position);
-    shader.setVec4("in_color", glm::vec4{50 / 255.f, 42 / 255.f, 43 / 255.f, 1.f});
 
     glBindVertexArray(vao);
 
@@ -162,10 +183,10 @@ struct ground_mesh_chunk_t
     shader.set_uniform_i32_from_index(sampler2_uni_loc, 1);
 
     glActiveTexture(GL_TEXTURE0);
-    grass_texture.bind(lod::detail_level::lod_detail_potato);
+    grass_texture.bind(lod_level);
 
     glActiveTexture(GL_TEXTURE1);
-    rock_texture.bind(lod::detail_level::lod_detail_potato);
+    rock_texture.bind(lod_level);
 
     glDrawElements(GL_TRIANGLES, (i32)indices.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);

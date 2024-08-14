@@ -376,6 +376,9 @@ lod_render_model_t::process_mesh(aiMesh *mesh, const aiScene *scene, lod::detail
 
     vertices.push_back(vertex);
   }
+
+  // FIXME: @m256i make cleaner plies
+
   // now wak through each of the mesh's faces (a face is a mesh its triangle) and retrieve the corresponding vertex
   // indices.
   for (usize i = 0; i < mesh->mNumFaces; i++)

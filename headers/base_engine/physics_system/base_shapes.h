@@ -17,17 +17,9 @@
 
 struct triangle_t
 {
-  union
-  {
-    struct
-    {
-      glm::vec3 a, b, c;
-    };
-    struct
-    {
-      glm::vec3 v0{}, v1{}, v2{};
-    };
-  };
+
+  glm::vec3 a, b, c;
+  glm::vec3 v0{}, v1{}, v2{};
 
   auto
   edge0() const

@@ -32,6 +32,7 @@
 #include "headers/base_engine/renderer/core/lod.h"
 #include "headers/base_engine/renderer/model.h"
 #include "headers/base_engine/renderer/model_renderer.h"
+#include "headers/base_engine/world_generation/ground_chunking.h"
 #include "headers/window.h"
 
 #include "headers/base_engine/physics_system/bbox.h"
@@ -52,6 +53,8 @@
 
 #include <base_engine/renderer/instanced_model.h>
 #include <base_engine/renderer/core/frame_buffer.h>
+
+#include <base_engine/world_generation/ground_chunking.h>
 
 constinit f32 lastX = 1920.f / 2.0f;
 constinit f32 lastY = 1080.f / 2.0f;
@@ -145,7 +148,8 @@ main(i32 argc, char** argv) -> i32
 
   lod_static_world_model_t LOD_tree{"lod_test_tree"};
 
-  ground_mesh_chunk_t plane{};
+  // ground_mesh_chunk_t plane{};
+  ground_mesh_system world{};
 
   static_world_model_t skybox3d_model{"skybox"};
 
@@ -182,8 +186,10 @@ void main()
 
 )");
 
-            plane.load_shader();
-            plane.initialize(0);
+            // plane.load_shader();
+            // plane.initialize(0);
+
+            world.init();
 
             game_renderer.model_renderer.add_static_world_model("tree1", "../data/trees/trees/westfalltree03.obj");
 
@@ -271,16 +277,21 @@ void main()
             skybox3d_model.draw(projection, view);
             glClear(GL_DEPTH_BUFFER_BIT);
 
-            plane.draw(game_renderer.display_w, game_renderer.display_h, &game_renderer.game_camera, 0xffffffff);
+            // plane.world_position = glm::vec3{0, 0, 0};
+            // plane.draw(game_renderer.display_w, game_renderer.display_h, game_renderer.game_camera, lod::detail_level::lod_detail_potato,
+            //            0xffffffff);
+
+            world.draw(game_renderer.display_w, game_renderer.display_h, game_renderer.game_camera);
+
             instanced_model2.draw(projection, view);
             instanced_model.draw(projection, view);
-            LOD_tree.draw(projection, view, lod::detail_level::lod_detail_potato);
+            LOD_tree.draw(projection, view, lod::detail_level::lod_detail_full);
 
             // post_processor.bake(pp_pass1, renderings);
             // post_processor.draw(pp_pass1);
 
             // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            //   auto collision_meshes = tree.find(game_renderer.game_camera.vec_position);
+            //     auto collision_meshes = tree.find(game_renderer.game_camera.vec_position);
 
             debug_menu.print_stdcout();
             debug_menu.draw(_window, in_menu, deltaTime);

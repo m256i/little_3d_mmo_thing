@@ -12,10 +12,41 @@
 #include <vector>
 #include <algorithm>
 #include <array>
-#include <string_view>
 
 #include "../../common.h"
 #include <base_engine/debug/debug_menu.h>
+#include <base_engine/debug/text_edit.h>
+
+#include <include/wren/wren.hpp>
+
+static void
+writeFn(WrenVM* vm, const char* text)
+{
+  printf("%s", text);
+}
+
+static void
+errorFn(WrenVM* vm, WrenErrorType errorType, const char* module, const int line, const char* msg)
+{
+  switch (errorType)
+  {
+  case WREN_ERROR_COMPILE:
+  {
+    printf("[%s line %d] [ wren compilation: Error] %s\n", module, line, msg);
+  }
+  break;
+  case WREN_ERROR_STACK_TRACE:
+  {
+    printf("[%s line %d] in %s\n", module, line, msg);
+  }
+  break;
+  case WREN_ERROR_RUNTIME:
+  {
+    printf("[ Wren Runtime Error] %s\n", msg);
+  }
+  break;
+  }
+}
 
 u0
 debug_menu_t::init_menu(GLFWwindow* _window)
@@ -32,6 +63,38 @@ debug_menu_t::init_menu(GLFWwindow* _window)
   // Setup Platform/Renderer backends
   ImGui_ImplGlfw_InitForOpenGL(_window, true);
   ImGui_ImplOpenGL3_Init("#version 330");
+
+  WrenConfiguration config;
+  wrenInitConfiguration(&config);
+  config.writeFn = &writeFn;
+  config.errorFn = &errorFn;
+  WrenVM* vm     = wrenNewVM(&config);
+
+  const char* module = "main";
+  const char* script = "System.print(\"I am running in a VM!\")";
+
+  WrenInterpretResult result = wrenInterpret(vm, module, script);
+
+  switch (result)
+  {
+  case WREN_RESULT_COMPILE_ERROR:
+  {
+    printf("Compile Error!\n");
+  }
+  break;
+  case WREN_RESULT_RUNTIME_ERROR:
+  {
+    printf("Runtime Error!\n");
+  }
+  break;
+  case WREN_RESULT_SUCCESS:
+  {
+    printf("Success!\n");
+  }
+  break;
+  }
+
+  wrenFreeVM(vm);
 
   // redirect console out
   // old = std::cout.rdbuf(console_buffer.rdbuf());

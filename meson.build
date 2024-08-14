@@ -1,6 +1,6 @@
 project(
     'proj',
-    ['cpp'],
+    ['cpp', 'c'],
     version: '0.1',
     default_options: [
         'warning_level=3',
@@ -20,6 +20,8 @@ cmake           = import('cmake')
 
 meshopt_lib = cmake.subproject('meshoptimizer')
 meshopt_target = meshopt_lib.dependency('meshoptimizer')
+
+
 
 root_path       = meson.global_source_root()
 lib_path        = root_path / 'libs'

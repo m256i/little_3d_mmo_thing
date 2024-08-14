@@ -8,7 +8,6 @@
 
 struct game_renderer_t
 {
-
   model_renderer_t model_renderer{};
   render_camera_t game_camera{};
 
