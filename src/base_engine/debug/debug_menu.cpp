@@ -19,34 +19,8 @@
 
 #include <include/wren/wren.hpp>
 
-static void
-writeFn(WrenVM* vm, const char* text)
-{
-  printf("%s", text);
-}
-
-static void
-errorFn(WrenVM* vm, WrenErrorType errorType, const char* module, const int line, const char* msg)
-{
-  switch (errorType)
-  {
-  case WREN_ERROR_COMPILE:
-  {
-    printf("[%s line %d] [ wren compilation: Error] %s\n", module, line, msg);
-  }
-  break;
-  case WREN_ERROR_STACK_TRACE:
-  {
-    printf("[%s line %d] in %s\n", module, line, msg);
-  }
-  break;
-  case WREN_ERROR_RUNTIME:
-  {
-    printf("[ Wren Runtime Error] %s\n", msg);
-  }
-  break;
-  }
-}
+#include <include/imgui/imstb_textedit.h>
+#include <base_engine/scripting/script_handler.h>
 
 u0
 debug_menu_t::init_menu(GLFWwindow* _window)
@@ -62,42 +36,12 @@ debug_menu_t::init_menu(GLFWwindow* _window)
 
   // Setup Platform/Renderer backends
   ImGui_ImplGlfw_InitForOpenGL(_window, true);
-  ImGui_ImplOpenGL3_Init("#version 330");
+  ImGui_ImplOpenGL3_Init("#version 430");
 
-  WrenConfiguration config;
-  wrenInitConfiguration(&config);
-  config.writeFn = &writeFn;
-  config.errorFn = &errorFn;
-  WrenVM* vm     = wrenNewVM(&config);
-
-  const char* module = "main";
-  const char* script = "System.print(\"I am running in a VM!\")";
-
-  WrenInterpretResult result = wrenInterpret(vm, module, script);
-
-  switch (result)
-  {
-  case WREN_RESULT_COMPILE_ERROR:
-  {
-    printf("Compile Error!\n");
-  }
-  break;
-  case WREN_RESULT_RUNTIME_ERROR:
-  {
-    printf("Runtime Error!\n");
-  }
-  break;
-  case WREN_RESULT_SUCCESS:
-  {
-    printf("Success!\n");
-  }
-  break;
-  }
-
-  wrenFreeVM(vm);
+  this->script_handler.init_vm();
 
   // redirect console out
-  // old = std::cout.rdbuf(console_buffer.rdbuf());
+  old = std::cout.rdbuf(console_buffer.rdbuf());
 }
 
 u0
@@ -187,15 +131,97 @@ debug_menu_t::draw(GLFWwindow* _window, bool _is_open, f32 _delta_time)
 
       if (ImGui::Button("execute"))
       {
-        if (std::strcmp(console_input_buff.data(), "otti"))
-        {
-          std::terminate();
-        }
         std::fill(console_input_buff.begin(), console_input_buff.end(), '\0');
       }
       ImGui::Text("%s", console_buffer.str().c_str());
+      ImGui::SetScrollHereY(1.f);
     }
     ImGui::End();
+
+    static i32 selected = 0;
+
+    if (ImGui::Begin("script editor"))
+    {
+      i32 counter = 0;
+      for (auto& script_module : this->script_modules)
+      {
+        if (ImGui::Selectable(script_module.module_name.c_str(), selected == counter, 0, ImVec2{200, 16}))
+        {
+          selected = counter;
+        }
+        counter++;
+      }
+
+      ImGui::SameLine();
+
+      if (ImGui::BeginChild(1, {0, 0}, true))
+      {
+        auto& script_module = this->script_modules.at(selected);
+
+        if (!script_module.message.empty())
+        {
+          ImGui::Text("%s", script_module.message.c_str());
+        }
+
+        script_module.editor.Render("", {ImGui::GetWindowSize().x - 80, ImGui::GetWindowSize().y - 61});
+
+        if (ImGui::Button("compile"))
+        {
+
+          auto text          = script_module.editor.GetText();
+          const char* script = text.c_str();
+
+          this->script_handler.compile_module(script_module.module_name.c_str(), script);
+
+          auto current_module = script_handler.get_module(script_module.module_name.c_str());
+
+          if (current_module && current_module->is_compiled)
+          {
+            bool success      = true;
+            auto class_exists = current_module->check_if_class_exists(script_module.required_class.c_str());
+            if (!class_exists)
+            {
+              LOG(DEBUG) << "[scripting] : " << script_module.module_name << " script requires '" << script_module.required_class
+                         << "' class!";
+              success = false;
+            }
+            auto func_exists = current_module->check_if_func_exists(script_module.required_method.c_str());
+            if (!func_exists)
+            {
+              LOG(DEBUG) << "[scripting] : " << script_module.module_name << " script requires '" << script_module.required_method
+                         << "' method!";
+              success = false;
+            }
+
+            if (success)
+            {
+              script_module.cache_function =
+                  current_module->cache_function(script_module.required_class.c_str(), script_module.required_method.c_str());
+            }
+          }
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("save script"))
+        {
+          auto text                                                         = script_module.editor.GetText();
+          const char* script                                                = text.c_str();
+          this->script_handler.modules.at(script_module.module_name).source = script;
+
+          this->script_handler.write_module_to_file(script_module.module_name, script_module.module_path);
+          LOG(DEBUG) << "[scripting] : saving module '" << script_module.module_name << "' to file: '" << script_module.module_path << "'";
+        }
+      }
+      ImGui::EndChild();
+    }
+    ImGui::End();
+
+    // if (terrain_module && terrain_module->is_compiled && cache_function)
+    // {
+    //   std::cout << "function result cached function: " << terrain_module->call_function(cache_function, 20.f) << "\n";
+    // }
+
     ImGui::Render();
   }
 

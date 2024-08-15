@@ -54,6 +54,7 @@ struct ground_mesh_chunk_t
   u0
   initialize(usize _divs, i32 chunk_scale, glm::vec3 _coords = glm::vec3{0, 0, 0})
   {
+
     SimplexNoise noise;
     grass_texture.load("../data/texture/grass.png");
     rock_texture.load("../data/texture/rock.png");

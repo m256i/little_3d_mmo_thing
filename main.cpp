@@ -163,6 +163,13 @@ main(i32 argc, char** argv) -> i32
           [&](GLFWwindow* _window)
           {
             debug_menu.init_menu(_window);
+
+            debug_menu.add_user_script_module("terrain", "../scripts/terrain.wren", "terrain", "terrain_value(_,_,_)",
+                                              "needs class 'terrain' with method 'terrain_value(x,y,z) -> double'");
+
+            debug_menu.add_user_script_module("texturing", "../scripts/texturing.wren", "texturer", "texture_value(_,_,_)",
+                                              "needs class 'texturer' with method 'texture_value(x,y,z) -> double'");
+
             debug_overlay_t::init(_window, game_renderer.game_camera);
 
             game_renderer.update_frame_buffer(_window);

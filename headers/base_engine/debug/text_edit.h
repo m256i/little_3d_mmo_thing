@@ -173,6 +173,7 @@ public:
     LanguageDefinition() : mPreprocChar('#'), mAutoIndentation(true), mTokenize(nullptr), mCaseSensitive(true) {}
 
     static const LanguageDefinition& CPlusPlus();
+    static const LanguageDefinition& Wren();
     static const LanguageDefinition& HLSL();
     static const LanguageDefinition& GLSL();
     static const LanguageDefinition& C();
