@@ -49,6 +49,29 @@ struct debug_menu_t
     scripting::engine_script_handler::script_module* internal_module{};
   };
 
+  struct lib_script_module
+  {
+    std::string module_name;
+    std::string module_path;
+
+    std::string source;
+
+    // message to be displayed at top of editor
+    std::string message;
+
+    u0
+    update_source()
+    {
+      std::ifstream file(module_path);
+      if (!file.is_open()) return;
+      source = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+      editor.SetText(source);
+    }
+
+    TextEditor editor{};
+    scripting::engine_script_handler::script_module* internal_module{};
+  };
+
   enum class debug_widget_type
   {
     button,
@@ -79,6 +102,23 @@ struct debug_menu_t
 
     LOG(DEBUG) << "loaded: " << _module_name << " from path: " << _path;
     // @TODO: add shit
+  }
+
+  u0
+  add_lib_script_module(const std::string& _module_name, const std::string& _path, const std::string& _message)
+  {
+    library_modules.insert({_module_name, lib_script_module{_module_name, _path, "", _message}});
+    script_handler.load_module_from_file(_module_name, _path);
+
+    library_modules.at(_module_name).internal_module = script_handler.get_module(_module_name);
+    library_modules.at(_module_name).source          = script_handler.get_module(_module_name)->source;
+
+    library_modules.at(_module_name).editor.SetLanguageDefinition(TextEditor::LanguageDefinition::Wren());
+    library_modules.at(_module_name).editor.SetShowWhitespaces(false);
+    library_modules.at(_module_name).editor.SetReadOnly(true);
+    library_modules.at(_module_name).editor.SetText(library_modules.at(_module_name).internal_module->source);
+
+    LOG(DEBUG) << "loaded library: " << _module_name << " from path: " << _path;
   }
 
   std::optional<double>
@@ -113,6 +153,8 @@ struct debug_menu_t
   }
 
   std::unordered_map<std::string, script_module> script_modules{};
+  std::unordered_map<std::string, lib_script_module> library_modules{};
+
   std::unordered_map<std::string, std::vector<debug_widget>> debug_wigdets{};
 
   u0

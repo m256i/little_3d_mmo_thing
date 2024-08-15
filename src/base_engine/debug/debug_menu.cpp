@@ -224,38 +224,53 @@ debug_menu_t::draw(GLFWwindow* _window, bool _is_open, f32 _delta_time)
 
         script_module.editor.Render("editor", {ImGui::GetWindowSize().x - 80, ImGui::GetWindowSize().y - 61});
 
-        if (ImGui::Button("compile"))
+        if (ImGui::Button("compile all"))
         {
+          // clears all of the modules
+          this->script_handler.reset_vm();
 
-          auto text          = script_module.editor.GetText();
-          const char* script = text.c_str();
-
-          this->script_handler.compile_module(script_module.module_name.c_str(), script);
-
-          auto current_module = script_handler.get_module(script_module.module_name.c_str());
-
-          if (current_module && current_module->is_compiled)
+          /* always compile all script modules */
+          for (auto& library : this->library_modules)
           {
-            bool success      = true;
-            auto class_exists = current_module->check_if_class_exists(script_module.required_class.c_str());
-            if (!class_exists)
-            {
-              LOG(DEBUG) << "[scripting] : " << script_module.module_name << " script requires '" << script_module.required_class
-                         << "' class!";
-              success = false;
-            }
-            auto func_exists = current_module->check_if_func_exists(script_module.required_method.c_str());
-            if (!func_exists)
-            {
-              LOG(DEBUG) << "[scripting] : " << script_module.module_name << " script requires '" << script_module.required_method
-                         << "' method!";
-              success = false;
-            }
+            LOG(DEBUG) << "[scripting] : linking library module: " << library.first;
+            /* reevalute the entire file */
+            library.second.update_source();
+            this->script_handler.compile_library_module(library.first.c_str(), library.second.source);
+          }
 
-            if (success)
+          for (auto& recomp_script_module : this->script_modules)
+          {
+            auto text          = recomp_script_module.second.editor.GetText();
+            const char* script = text.c_str();
+
+            this->script_handler.compile_module(recomp_script_module.second.module_name.c_str(), script);
+
+            auto current_module = script_handler.get_module(recomp_script_module.second.module_name.c_str());
+
+            if (current_module && current_module->is_compiled)
             {
-              script_module.cache_function =
-                  current_module->cache_function(script_module.required_class.c_str(), script_module.required_method.c_str());
+              bool success      = true;
+              auto class_exists = current_module->check_if_class_exists(recomp_script_module.second.required_class.c_str());
+              if (!class_exists)
+              {
+                LOG(DEBUG) << "[scripting] : " << recomp_script_module.second.module_name << " script requires '"
+                           << recomp_script_module.second.required_class << "' class!";
+                success = false;
+              }
+              auto func_exists = current_module->check_if_func_exists(script_module.required_method.c_str());
+              if (!func_exists)
+              {
+                LOG(DEBUG) << "[scripting] : " << recomp_script_module.second.module_name << " script requires '"
+                           << recomp_script_module.second.required_method << "' method!";
+                success = false;
+              }
+
+              if (success)
+              {
+                LOG(DEBUG) << "[scripting] : succesfully compiled: " << current_module->name;
+                recomp_script_module.second.cache_function = current_module->cache_function(
+                    recomp_script_module.second.required_class.c_str(), recomp_script_module.second.required_method.c_str());
+              }
             }
           }
         }
@@ -272,6 +287,40 @@ debug_menu_t::draw(GLFWwindow* _window, bool _is_open, f32 _delta_time)
           LOG(DEBUG) << "[scripting] : saving module '" << script_module.module_name << "' to file: '" << script_module.module_path << "'";
         }
       }
+      ImGui::EndChild();
+    }
+    ImGui::End();
+
+    static i32 selected_lib = 0;
+    static std::string selected_name_lib;
+
+    if (ImGui::Begin("script api"))
+    {
+      i32 counter = 0;
+      for (auto& library : this->library_modules)
+      {
+        if (ImGui::Selectable(library.second.module_name.c_str(), selected_lib == counter, 0, ImVec2{200, 16}))
+        {
+          selected_name_lib = library.first;
+          selected_lib      = counter;
+        }
+        counter++;
+      }
+
+      ImGui::SameLine();
+
+      if (ImGui::BeginChild("script api", {0, 0}, true) && !selected_name_lib.empty())
+      {
+        auto& library = this->library_modules.at(selected_name_lib);
+
+        if (!library.message.empty())
+        {
+          ImGui::Text("%s", library.message.c_str());
+        }
+
+        library.editor.Render("editor", {ImGui::GetWindowSize().x - 80, ImGui::GetWindowSize().y - 61});
+      }
+
       ImGui::EndChild();
     }
     ImGui::End();

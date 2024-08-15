@@ -6,6 +6,7 @@
 #include <common.h>
 #include <unordered_map>
 #include <mutex>
+#include "scripting_api.h"
 
 namespace scripting
 {
@@ -101,6 +102,7 @@ struct engine_script_handler
       assert(handler->vm.vm);
       assert(!name.empty());
       assert(!_class_name.empty());
+      assert(handler->modules.contains(name));
 
       auto vm = handler->vm.vm;
 
@@ -204,8 +206,9 @@ struct engine_script_handler
     WrenConfiguration* config = new WrenConfiguration;
 
     wrenInitConfiguration(config);
-    config->writeFn = &writeFn;
-    config->errorFn = &errorFn;
+    config->writeFn             = &writeFn;
+    config->errorFn             = &errorFn;
+    config->bindForeignMethodFn = scripting::bindForeignMethod;
 
     auto new_vm = wrenNewVM(config);
     vm.vm       = new_vm;
@@ -243,6 +246,10 @@ struct engine_script_handler
     {
       std::filesystem::create_directory("../scripts/");
     }
+    if (!std::filesystem::exists("../scripts/corelib/"))
+    {
+      std::filesystem::create_directory("../scripts/corelib/");
+    }
 
     std::ifstream file(_file_path);
     if (!file.is_open())
@@ -279,6 +286,10 @@ struct engine_script_handler
     if (!std::filesystem::exists("../scripts/"))
     {
       std::filesystem::create_directory("../scripts/");
+    }
+    if (!std::filesystem::exists("../scripts/corelib/"))
+    {
+      std::filesystem::create_directory("../scripts/corelib/");
     }
 
     auto src = get_module(module_name)->source;
@@ -324,9 +335,33 @@ struct engine_script_handler
 
     modules.at(module_name).source = _source;
 
-    reset_vm();
+    auto comp_result = wrenInterpret(vm.vm, module_name.c_str(), _source.c_str());
+
+    if (comp_result == WREN_RESULT_SUCCESS)
+    {
+      modules.at(module_name).is_compiled = true;
+      modules.at(module_name).mark_recompiled();
+    }
+    else
+    {
+      modules.at(module_name).is_compiled = false;
+    }
+  }
+
+  u0
+  compile_library_module(const std::string& module_name, const std::string& _source)
+  {
+    if (!modules.contains(module_name))
+    {
+      LOG(DEBUG) << "[scripting] : library: " << module_name << " doesn't exist! aborting...\n";
+      assert(false);
+    }
+
+    modules.at(module_name).source = _source;
 
     auto comp_result = wrenInterpret(vm.vm, module_name.c_str(), _source.c_str());
+
+    LOG(DEBUG) << "successfully compiled: " << module_name;
 
     if (comp_result == WREN_RESULT_SUCCESS)
     {

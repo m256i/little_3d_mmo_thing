@@ -89,8 +89,7 @@ process_input(GLFWwindow* window)
   {
     if (glfwGetTime() - last_change_time > 0.2)
     {
-      in_menu = !in_menu;
-      puts("changed menu state");
+      in_menu          = !in_menu;
       last_change_time = glfwGetTime();
     }
   };
@@ -169,6 +168,8 @@ main(i32 argc, char** argv) -> i32
 
             debug_menu.add_user_script_module("texturing", "../scripts/texturing.wren", "texturer", "texture_value(_,_,_)",
                                               "needs class 'texturer' with method 'texture_value(x,y,z) -> double'");
+
+            debug_menu.add_lib_script_module("noiselib", "../scripts/corelib/noiselib.wren", "API implementation of noise functions");
 
             debug_overlay_t::init(_window, game_renderer.game_camera);
 
