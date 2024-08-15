@@ -196,7 +196,7 @@ void main()
             // plane.load_shader();
             // plane.initialize(0);
 
-            world.init();
+            world.init(debug_menu);
 
             game_renderer.model_renderer.add_static_world_model("tree1", "../data/trees/trees/westfalltree03.obj");
 

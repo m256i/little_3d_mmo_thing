@@ -121,11 +121,69 @@ debug_menu_t::draw(GLFWwindow* _window, bool _is_open, f32 _delta_time)
     }
     ImGui::End();
 
-    if (ImGui::Begin("console", nullptr))
+    if (ImGui::Begin("debug controls"))
     {
+      for (auto& section : debug_wigdets)
+      {
+        if (ImGui::CollapsingHeader(section.first.c_str()))
+        {
+          for (auto& widget : section.second)
+          {
+            switch (widget.type)
+            {
+            case debug_widget_type::button:
+            {
+              if (ImGui::Button(widget.name.c_str()))
+              {
+                widget.callback(-1);
+              }
+              break;
+            }
+            case debug_widget_type::slider_f32:
+            {
+              ImGui::SliderFloat(widget.name.c_str(), &widget.curr_val_impl, widget.min_val, widget.max_val);
+              widget.callback(widget.curr_val_impl);
+              break;
+            }
+            case debug_widget_type::slider_i32:
+            {
+              i32 val = widget.curr_val_impl;
+              ImGui::SliderInt(widget.name.c_str(), &val, widget.min_val, widget.max_val);
+              widget.curr_val_impl = val;
+              widget.callback(widget.curr_val_impl);
+              break;
+            }
+            default:
+            {
+              break;
+            }
+            }
+          }
+        }
+      }
+    }
+    ImGui::End();
+
+    if (ImGui::Begin("console", nullptr, ImGuiWindowFlags_NoScrollbar))
+    {
+      ImGui::SetNextWindowSize({ImGui::GetContentRegionMax().x, ImGui::GetContentRegionMax().y - 20});
+      ImGui::BeginChild("console##text", {0, 0}, true);
+      {
+        ImGui::Text("%s", console_buffer.str().c_str());
+        ImGui::SetScrollHereY(1.f);
+      }
+      ImGui::EndChild();
+
       if (ImGui::InputText(" ", console_input_buff.data(), console_input_buff.size()))
       {
         std::fill(console_input_buff.begin(), console_input_buff.end(), '\0');
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("clear"))
+      {
+        console_buffer.str({});
+        console_buffer.clear();
+        // console_buffer.flush();
       }
       ImGui::SameLine();
 
@@ -133,37 +191,38 @@ debug_menu_t::draw(GLFWwindow* _window, bool _is_open, f32 _delta_time)
       {
         std::fill(console_input_buff.begin(), console_input_buff.end(), '\0');
       }
-      ImGui::Text("%s", console_buffer.str().c_str());
       ImGui::SetScrollHereY(1.f);
     }
     ImGui::End();
 
     static i32 selected = 0;
+    static std::string selected_name;
 
     if (ImGui::Begin("script editor"))
     {
       i32 counter = 0;
       for (auto& script_module : this->script_modules)
       {
-        if (ImGui::Selectable(script_module.module_name.c_str(), selected == counter, 0, ImVec2{200, 16}))
+        if (ImGui::Selectable(script_module.second.module_name.c_str(), selected == counter, 0, ImVec2{200, 16}))
         {
-          selected = counter;
+          selected_name = script_module.first;
+          selected      = counter;
         }
         counter++;
       }
 
       ImGui::SameLine();
 
-      if (ImGui::BeginChild(1, {0, 0}, true))
+      if (ImGui::BeginChild("script editor", {0, 0}, true) && !selected_name.empty())
       {
-        auto& script_module = this->script_modules.at(selected);
+        auto& script_module = this->script_modules.at(selected_name);
 
         if (!script_module.message.empty())
         {
           ImGui::Text("%s", script_module.message.c_str());
         }
 
-        script_module.editor.Render("", {ImGui::GetWindowSize().x - 80, ImGui::GetWindowSize().y - 61});
+        script_module.editor.Render("editor", {ImGui::GetWindowSize().x - 80, ImGui::GetWindowSize().y - 61});
 
         if (ImGui::Button("compile"))
         {
