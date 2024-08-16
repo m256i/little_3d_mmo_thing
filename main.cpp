@@ -170,6 +170,7 @@ main(i32 argc, char** argv) -> i32
                                               "needs class 'texturer' with method 'texture_value(x,y,z) -> double'");
 
             debug_menu.add_lib_script_module("noiselib", "../scripts/corelib/noiselib.wren", "API implementation of noise functions");
+            debug_menu.add_lib_script_module("dbglib", "../scripts/corelib/dbglib.wren", "API implementation of debug functions");
 
             debug_overlay_t::init(_window, game_renderer.game_camera);
 

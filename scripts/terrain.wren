@@ -1,4 +1,5 @@
 import "noiselib" for Noise
+import "dbglib" for Debug
 
 class terrain {
 	static terrain_value(x,y,z) {
@@ -19,6 +20,9 @@ class terrain {
 		return val
 	}
 }
+
+
+
 
 
 

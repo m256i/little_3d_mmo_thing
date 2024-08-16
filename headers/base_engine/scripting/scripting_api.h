@@ -152,13 +152,31 @@ IMPL_getNoise3d(WrenVM* vm)
   wrenSetSlotDouble(vm, 0, val);
 }
 
+static inline void
+IMPL_Debugprint(WrenVM* vm)
+{
+  wrenEnsureSlots(vm, 2);
+  auto str = std::string(wrenGetSlotString(vm, 1));
+  std::cout << "[vm] >> " << str << "\n";
+}
+
 static inline WrenForeignMethodFn
 bindForeignMethod(WrenVM* vm, const char* module, const char* className, bool isStatic, const char* signature)
 {
   /*
     noiselib functions
   */
-  if (strcmp(module, "noiselib") == 0)
+  if (strcmp(module, "dbglib") == 0)
+  {
+    if (strcmp(className, "Debug") == 0)
+    {
+      if (isStatic && strcmp(signature, "print(_)") == 0)
+      {
+        return IMPL_Debugprint;
+      }
+    }
+  }
+  else if (strcmp(module, "noiselib") == 0)
   {
     /*
       Noise class:
