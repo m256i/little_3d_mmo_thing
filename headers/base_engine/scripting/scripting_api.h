@@ -106,9 +106,8 @@ static inline void
 IMPL_setNoiseSeed(WrenVM* vm)
 {
   wrenEnsureSlots(vm, 3);
-  auto handle = (u32)wrenGetSlotDouble(vm, 1);
-  auto seed   = (i32)wrenGetSlotDouble(vm, 2);
-
+  const auto handle = (u32)wrenGetSlotDouble(vm, 1);
+  const auto seed   = (i32)wrenGetSlotDouble(vm, 2);
   noise_impl::noise_handles.at(handle).SetSeed(seed);
 }
 
@@ -117,9 +116,8 @@ static inline void
 IMPL_setNoiseFreq(WrenVM* vm)
 {
   wrenEnsureSlots(vm, 3);
-  auto handle = (u32)wrenGetSlotDouble(vm, 1);
-  auto freq   = (f64)wrenGetSlotDouble(vm, 2);
-
+  const auto handle = (u32)wrenGetSlotDouble(vm, 1);
+  const auto freq   = (f64)wrenGetSlotDouble(vm, 2);
   noise_impl::noise_handles.at(handle).SetFrequency(freq);
 }
 
@@ -128,12 +126,10 @@ static inline void
 IMPL_getNoise2d(WrenVM* vm)
 {
   wrenEnsureSlots(vm, 4);
-  auto handle = (u32)wrenGetSlotDouble(vm, 1);
-  auto x      = (f64)wrenGetSlotDouble(vm, 2);
-  auto y      = (f64)wrenGetSlotDouble(vm, 3);
-
-  f64 val = noise_impl::noise_handles.at(handle).GetNoise(x, y);
-
+  const auto handle = (u32)wrenGetSlotDouble(vm, 1);
+  const auto x      = (f64)wrenGetSlotDouble(vm, 2);
+  const auto y      = (f64)wrenGetSlotDouble(vm, 3);
+  f64 val           = noise_impl::noise_handles.at(handle).GetNoise(x, y);
   wrenSetSlotDouble(vm, 0, val);
 }
 
@@ -142,13 +138,11 @@ static inline void
 IMPL_getNoise3d(WrenVM* vm)
 {
   wrenEnsureSlots(vm, 5);
-  auto handle = (u32)wrenGetSlotDouble(vm, 1);
-  auto x      = (f64)wrenGetSlotDouble(vm, 2);
-  auto y      = (f64)wrenGetSlotDouble(vm, 3);
-  auto z      = (f64)wrenGetSlotDouble(vm, 4);
-
-  f64 val = noise_impl::noise_handles.at(handle).GetNoise(x, y, z);
-
+  const auto handle = (u32)wrenGetSlotDouble(vm, 1);
+  const auto x      = (f64)wrenGetSlotDouble(vm, 2);
+  const auto y      = (f64)wrenGetSlotDouble(vm, 3);
+  const auto z      = (f64)wrenGetSlotDouble(vm, 4);
+  f64 val           = noise_impl::noise_handles.at(handle).GetNoise(x, y, z);
   wrenSetSlotDouble(vm, 0, val);
 }
 

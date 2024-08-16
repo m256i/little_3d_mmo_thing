@@ -58,7 +58,7 @@ struct ground_mesh_system
     {
       for (usize j = 0; j != num_chunks_sqrt; j++)
       {
-        chunks[(i * num_chunks_sqrt) + j].draw(display_w, display_h, camera, lod::detail_level::lod_detail_potato, 0);
+        chunks[(i * num_chunks_sqrt) + j].draw(display_w, display_h, camera, lod::detail_level::lod_detail_high, 0);
       }
     }
   }
