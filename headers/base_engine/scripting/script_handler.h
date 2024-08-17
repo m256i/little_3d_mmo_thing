@@ -4,6 +4,7 @@
 #include <include/wren/wren.hpp>
 #include <cassert>
 #include <common.h>
+#include <optional>
 #include <unordered_map>
 #include <mutex>
 #include "scripting_api.h"
@@ -98,10 +99,14 @@ struct engine_script_handler
         return false;
       }
 
+      if (_class_name.empty())
+      {
+        return false;
+      }
+
       assert(handler);
       assert(handler->vm.vm);
       assert(!name.empty());
-      assert(!_class_name.empty());
       assert(handler->modules.contains(name));
 
       auto vm = handler->vm.vm;
@@ -170,12 +175,12 @@ struct engine_script_handler
       return last_func_handle;
     }
 
-    double
+    std::optional<double>
     call_function(usize function_handle, auto&&... args)
     {
       if (!is_compiled)
       {
-        return 0.0;
+        return std::nullopt;
       }
 
       assert(cached_function_handles.contains(function_handle));
@@ -188,7 +193,12 @@ struct engine_script_handler
       (wrenSetSlotDouble(vm, arg_i++, args), ...);
 
       wrenSetSlotHandle(vm, 0, cached_function_handles[function_handle].class_handle);
-      wrenCall(vm, cached_function_handles[function_handle].function_handle);
+      const auto result = wrenCall(vm, cached_function_handles[function_handle].function_handle);
+
+      if (result != WREN_RESULT_SUCCESS)
+      {
+        return std::nullopt;
+      }
 
       wrenEnsureSlots(vm, 1);
       double output = wrenGetSlotDouble(vm, 0);
@@ -325,7 +335,7 @@ struct engine_script_handler
   }
 
   u0
-  compile_module(const std::string& module_name, const std::string& _source)
+  compile_module(const std::string& module_name, const std::string& _source, const std::string& required_class = "")
   {
     if (!modules.contains(module_name))
     {
@@ -341,6 +351,17 @@ struct engine_script_handler
     {
       modules.at(module_name).is_compiled = true;
       modules.at(module_name).mark_recompiled();
+
+      if (modules.at(module_name).check_if_class_exists(required_class) && modules.at(module_name).check_if_func_exists("on_module_init()"))
+      {
+        std::cout << "[scripting] : (" << module_name << ") : on_module_init() called\n";
+        usize temp_handle = modules.at(module_name).cache_function(required_class, "on_module_init()");
+        modules.at(module_name).call_function(temp_handle);
+      }
+      else
+      {
+        std::cout << "[scripting] : (" << module_name << ") : on_module_init() skipped\n";
+      }
     }
     else
     {

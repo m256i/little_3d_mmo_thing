@@ -88,32 +88,8 @@ struct ground_mesh_chunk_t
           }
           else
           {
-            // @m256i scripting interface for terrain generation should go here
-            auto nv = noise.fractal(1, (x + (_coords.x * coord_scale)) * 0.101f, (y + (_coords.y * coord_scale)) * 0.101f,
-                                    (z + (_coords.z * coord_scale)) * 0.101f);
-            // auto nv = noise.fractal(2, (x + _coords.x), (y + _coords.y), (z + _coords.z));
-            // ground_height           = (static_height) + (noise.fractal(2, (x + _coords.x) * 0.01501f, (z + _coords.z) * 0.01501f));
-            ground_height = (static_height) +
-                            (noise.fractal(1, (x + (_coords.x * coord_scale)) * 0.0075, (z + (_coords.z * coord_scale)) * 0.0075)) * 10;
-            auto distance_to_ground = std::abs(ground_height - y) * 0.55;
-
-            // if (distance_to_ground <= 2)
-            //{
-            //   nv -= 0.4;
-            // }
-
-            // float nv = 0;
-
-            if (distance_to_ground == 0)
-            {
-              nv = -1.f;
-            }
-
-            nv += 1.f - (1.f / distance_to_ground * 2);
-
-            nv = std::clamp(nv, -1.f, 1.f);
-
-            field[(x * n + y) * n + z] = -1;
+            delete[] field;
+            return;
           }
         }
       }
@@ -201,7 +177,8 @@ struct ground_mesh_chunk_t
           }
           else
           {
-            field[(x * n + y) * n + z] = -1;
+            delete[] field;
+            return;
           }
         }
       }

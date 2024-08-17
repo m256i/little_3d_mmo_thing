@@ -2,24 +2,31 @@ import "noiselib" for Noise
 import "dbglib" for Debug
 
 class terrain {
-	static terrain_value(x,y,z) {
-		var noise = Noise.new()
-		noise.setType("OpenSimplex2")
-		noise.setFreq(0.09)
-		noise.setSeed(2384354)
-		var val = noise.get3d(x,y,z)
-		
-		noise.setFreq(0.3)
-		val = val - (noise.get3d(x,y,z) * 0.4)
-		
-		noise.free()
+
+	static on_module_init() {
+		__noise = Noise.new()
+		__noise.setNoiseType("OpenSimplex2")
+		__noise.setNoiseFreq(0.1)
+		__noise.setFractalType("None")
+		__noise.setDomainWarpType("OpenSimplex2")
+		__noise.setDomainWarpAmplitude(300)
+	}
+	
+	static terrain_value(x,y,z) {		
+		var val = __noise.get3d(x,y,z)
 		
 		if (y > 20) val = 1
-		if (y < 1) val = -1
+		if (y < 1)  val = -1
 		
 		return val
 	}
 }
+
+
+
+
+
+
 
 
 

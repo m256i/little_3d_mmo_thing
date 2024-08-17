@@ -243,7 +243,8 @@ debug_menu_t::draw(GLFWwindow* _window, bool _is_open, f32 _delta_time)
             auto text          = recomp_script_module.second.editor.GetText();
             const char* script = text.c_str();
 
-            this->script_handler.compile_module(recomp_script_module.second.module_name.c_str(), script);
+            this->script_handler.compile_module(recomp_script_module.second.module_name.c_str(), script,
+                                                recomp_script_module.second.required_class);
 
             auto current_module = script_handler.get_module(recomp_script_module.second.module_name.c_str());
 
