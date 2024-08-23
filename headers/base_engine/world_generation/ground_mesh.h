@@ -27,7 +27,11 @@
 
 #include <base_engine/debug/debug_menu.h>
 
-/* handles LOD levels internally */
+/* handles LOD levels internally for main mesh and also foliage */
+/* possible things to think about in the future:
+  - interactive foliage like trees and stones to cut down or chests (will hopefully be fixed by proper gameobj system)
+  - what if we want different worldgen stuff like generating cave entrances using sbtractive method
+ */
 
 struct ground_mesh_chunk_t
 {
@@ -37,7 +41,6 @@ struct ground_mesh_chunk_t
   renderer::image_tex_lod rock_texture{};
 
   f64 scale_xyz = 100.f;
-
   glm::vec3 world_position{0, 0, 0};
 
   u0
@@ -48,18 +51,25 @@ struct ground_mesh_chunk_t
 
   u32 vao, vbo, ebo;
 
-  std::vector<f32> vertices{};
+  struct mesh_vert_instance
+  {
+    glm::vec3 vert{};
+    glm::vec3 normal{};
+  };
+
+  std::vector<mesh_vert_instance> verts;
   std::vector<u32> indices{};
 
-  const i32 grid_size = 50;
+  constexpr static i32 grid_size = 50;
 
   u0
   initialize(usize _divs, i32 chunk_scale, debug_menu_t &debug_menu, glm::vec3 _coords = glm::vec3{0, 0, 0})
   {
-    SimplexNoise noise;
-
     grass_texture.load("../data/texture/grass.png");
     rock_texture.load("../data/texture/rock.png");
+
+    scale_xyz      = chunk_scale;
+    world_position = _coords;
 
     const f32 coord_scale = (f32)grid_size / chunk_scale;
 
@@ -83,8 +93,8 @@ struct ground_mesh_chunk_t
 
           if (script_val.has_value())
           {
-            script_val.value()         = std::clamp(script_val.value(), -1.0, 1.0);
-            field[(x * n + y) * n + z] = script_val.value();
+            script_val.value()         = std::clamp(script_val.value(), 0.0, 1.0);
+            field[(x * n + y) * n + z] = (script_val.value() - 0.5) * 2.0;
           }
           else
           {
@@ -98,7 +108,7 @@ struct ground_mesh_chunk_t
     MC::mcMesh mesh;
     MC::marching_cube(field, n, n, n, mesh);
 
-    vertices.reserve(mesh.vertices.size() * 6);
+    verts.reserve(mesh.vertices.size());
     indices.reserve(mesh.indices.size());
 
     assert(mesh.vertices.size() == mesh.normals.size());
@@ -108,13 +118,7 @@ struct ground_mesh_chunk_t
       auto &vertex = mesh.vertices[i];
       auto &normal = mesh.normals[i];
 
-      vertices.push_back(vertex.x);
-      vertices.push_back(vertex.y);
-      vertices.push_back(vertex.z);
-
-      vertices.push_back(normal.x);
-      vertices.push_back(normal.y);
-      vertices.push_back(normal.z);
+      verts.push_back(mesh_vert_instance{glm::vec3{vertex.x, vertex.y, vertex.z}, glm::vec3{normal.x, normal.y, normal.z}});
     }
 
     for (const auto &index : mesh.indices)
@@ -130,17 +134,17 @@ struct ground_mesh_chunk_t
 
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(f32), vertices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(mesh_vert_instance), verts.data(), GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(u32), indices.data(), GL_STATIC_DRAW);
 
     // coords
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)offsetof(mesh_vert_instance, vert));
     glEnableVertexAttribArray(0);
 
     // normals
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)offsetof(mesh_vert_instance, normal));
     glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
@@ -150,6 +154,9 @@ struct ground_mesh_chunk_t
   u0
   regenerate(i32 chunk_scale, debug_menu_t &debug_menu, glm::vec3 _coords = glm::vec3{0, 0, 0})
   {
+    scale_xyz      = chunk_scale;
+    world_position = _coords;
+
     const f32 coord_scale = (f32)grid_size / chunk_scale;
 
     const i32 n  = grid_size + 1;
@@ -172,8 +179,8 @@ struct ground_mesh_chunk_t
 
           if (script_val.has_value()) [[likely]]
           {
-            script_val.value()         = std::clamp(script_val.value(), -1.0, 1.0);
-            field[(x * n + y) * n + z] = script_val.value();
+            script_val.value()         = std::clamp(script_val.value(), 0.0, 1.0);
+            field[(x * n + y) * n + z] = (script_val.value() - 0.5) * 2.0;
           }
           else
           {
@@ -184,13 +191,13 @@ struct ground_mesh_chunk_t
       }
     }
 
-    vertices.clear();
+    verts.clear();
     indices.clear();
 
     MC::mcMesh mesh;
     MC::marching_cube(field, n, n, n, mesh);
 
-    vertices.reserve(mesh.vertices.size() * 6);
+    verts.reserve(mesh.vertices.size());
     indices.reserve(mesh.indices.size());
 
     assert(mesh.vertices.size() == mesh.normals.size());
@@ -200,13 +207,11 @@ struct ground_mesh_chunk_t
       auto &vertex = mesh.vertices[i];
       auto &normal = mesh.normals[i];
 
-      vertices.push_back(vertex.x);
-      vertices.push_back(vertex.y);
-      vertices.push_back(vertex.z);
+      vertex.x /= grid_size;
+      vertex.y /= grid_size;
+      vertex.z /= grid_size;
 
-      vertices.push_back(normal.x);
-      vertices.push_back(normal.y);
-      vertices.push_back(normal.z);
+      verts.push_back(mesh_vert_instance{glm::vec3{vertex.x, vertex.y, vertex.z}, glm::vec3{normal.x, normal.y, normal.z}});
     }
 
     for (const auto &index : mesh.indices)
@@ -224,17 +229,17 @@ struct ground_mesh_chunk_t
 
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(f32), vertices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(mesh_vert_instance), verts.data(), GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(u32), indices.data(), GL_STATIC_DRAW);
 
     // coords
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)offsetof(mesh_vert_instance, vert));
     glEnableVertexAttribArray(0);
 
     // normals
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)offsetof(mesh_vert_instance, normal));
     glEnableVertexAttribArray(1);
 
     delete[] field;
@@ -249,7 +254,8 @@ struct ground_mesh_chunk_t
     glm::mat4 _view              = camera.get_view_matrix();
     glm::mat4 model              = glm::mat4(1.0f);
 
-    model = glm::translate(model, {world_position.x * grid_size, world_position.y * grid_size, world_position.z * grid_size});
+    // might be  * grid_size
+    model = glm::translate(model, {world_position.x, world_position.y, world_position.z});
     model = glm::scale(model, {scale_xyz, scale_xyz, scale_xyz});
 
     // idk why i even rotate this

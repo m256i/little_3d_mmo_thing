@@ -23,6 +23,9 @@
 #include "base_engine/renderer/core/image_texture.h"
 #include "base_engine/renderer/core/lod.h"
 
+#undef min(x, y)
+#undef max(x, y)
+
 inline u32
 load_texture_from_file(std::string_view path, std::string_view directory, u32 &_width, u32 &_height)
 {
@@ -138,6 +141,8 @@ render_model_t::process_node(aiNode *node, const aiScene *scene)
 mesh_t
 render_model_t::process_mesh(aiMesh *mesh, const aiScene *scene)
 {
+  mesh_aabb.expand_to_bbox(mesh->mAABB.mMin, mesh->mAABB.mMax);
+
   // data to fill
   std::vector<mesh_t::vertex_t> vertices;
   std::vector<unsigned int> indices;
@@ -191,6 +196,7 @@ render_model_t::process_mesh(aiMesh *mesh, const aiScene *scene)
 
     vertices.push_back(vertex);
   }
+
   // now wak through each of the mesh's faces (a face is a mesh its triangle) and retrieve the corresponding vertex
   // indices.
   for (usize i = 0; i < mesh->mNumFaces; i++)
@@ -402,7 +408,7 @@ lod_render_model_t::process_mesh(aiMesh *mesh, const aiScene *scene, lod::detail
 
     float threshold           = lod::model_detail_scales[(usize)lod_level];
     size_t target_index_count = size_t(indices.size() * threshold);
-    float target_error        = 0.15;
+    float target_error        = 0.19;
     unsigned int options      = 0; // meshopt_SimplifyX flags, 0 is a safe default
 
     std::vector<unsigned int> lod(indices.size());

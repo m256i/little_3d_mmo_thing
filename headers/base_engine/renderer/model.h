@@ -20,6 +20,7 @@
 #include <common.h>
 #include "core/image_texture.h"
 #include "core/lod.h"
+#include "render_primitives/bbox.h"
 
 class render_model_t
 {
@@ -32,6 +33,10 @@ public:
   std::vector<mesh_t> meshes;
   std::string_view directory;
   bool gamme_corretion;
+
+  primitives::aabb mesh_aabb;
+
+  f32 model_scale_factor = 1.f;
 
   // constructor, expects a filepath to a 3D model.
   explicit render_model_t(std::string const &path, bool gamma = false) : gamme_corretion(gamma) { load_render_model(path); }
@@ -76,6 +81,8 @@ public:
   std::string_view directory;
 
   bool gamme_corretion;
+
+  f32 model_scale_factor;
 
   // constructor, expects a filepath to a 3D model.
   explicit lod_render_model_t(std::string const &path, bool gamma = false) : gamme_corretion(gamma) { load_render_model(path); }

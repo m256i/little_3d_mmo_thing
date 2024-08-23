@@ -2,6 +2,7 @@
 
 #include <common.h>
 #include <glm/glm.hpp>
+#include <base_engine/debug/debug_overlay.h>
 #include "static_world_model.h"
 
 #include "core/ssbos.h"
@@ -17,7 +18,7 @@ struct instance_data
 struct instanced_static_world_model
 {
   static_world_model_t base_model{"instance_model"};
-  usize instance_count;
+  usize instance_count{0};
 
   std::vector<instance_data> instance_data_buffer{};
   std::vector<glm::mat4> translated_instance_data{};
@@ -73,6 +74,30 @@ struct instanced_static_world_model
     return instance_data_buffer;
   }
 
+  glm::mat4
+  RotateAroundPoint(const glm::mat4 &matrix, const glm::vec3 &point, float angle, const glm::vec3 &axis)
+  {
+    // Step 1: Translate the point to the origin
+    glm::mat4 translationToOrigin = glm::translate(glm::mat4(1.0f), -point);
+    glm::mat4 rotation            = glm::rotate(glm::mat4(1.0f), angle, axis);
+    glm::mat4 translationBack     = glm::translate(glm::mat4(1.0f), point);
+
+    // Combine the transformations: T_back * R * T_origin * M
+    return translationBack * rotation * translationToOrigin * matrix;
+  }
+
+  glm::mat4
+  rotateAroundPoint(const glm::mat4 &matrix, const glm::vec3 &point, float angle, const glm::vec3 &axis)
+  {
+    // Translate the matrix to the origin
+    glm::mat4 translation        = glm::translate(glm::mat4(1.0f), -point);
+    glm::mat4 rotation           = glm::rotate(glm::mat4(1.0f), angle, axis);
+    glm::mat4 inverseTranslation = glm::translate(glm::mat4(1.0f), point);
+
+    // Combine the transformations
+    return inverseTranslation * rotation * translation * matrix;
+  }
+
   // TODO: possibly slow and needs some scaling optimizations as in threading or maybe a compute shader
   u0
   apply_translation_at(usize _index)
@@ -82,13 +107,22 @@ struct instanced_static_world_model
     auto &instance = instance_data_buffer.at(_index);
 
     glm::mat4 model = glm::mat4(1.0f);
-    model           = glm::translate(model, instance.world_position);
-    model           = glm::scale(model, instance.world_scale);
 
-    model = glm::rotate(model, instance.world_rotation.x, glm::vec3{1, 0, 0});
-    model = glm::rotate(model, instance.world_rotation.y, glm::vec3{0, 1, 0});
-    model = glm::rotate(model, instance.world_rotation.z, glm::vec3{0, 0, 1});
+    glm::vec3 rotation_axis = glm::cross(glm::vec3{0, 1, 0}, instance.world_rotation);
+    float cos_angle         = glm::dot(glm::vec3{0, 1, 0}, instance.world_rotation);
+    float angle             = glm::acos(cos_angle); // Angle in radians
 
+    model = glm::translate(model, instance.world_position);
+
+    if (glm::length(rotation_axis) > 0.0001f)
+    {
+      model = glm::rotate(model, angle, rotation_axis);
+    }
+
+    model = glm::scale(model, instance.world_scale);
+
+    // model = glm::rotate(model, glm::radians(90.0f), {0, 0, 1});
+    //  model = glm::scale(model, instance.world_scale);
     translated_instance_data.at(_index) = model;
   }
 
@@ -104,6 +138,11 @@ struct instanced_static_world_model
   u0
   draw(const glm::mat4 &_projection, const glm::mat4 &_view)
   {
+    if (instance_count == 0)
+    {
+      return;
+    }
+
     assert(instance_data_buffer.size() == instance_count);
     assert(translated_instance_data.size() == instance_count);
 

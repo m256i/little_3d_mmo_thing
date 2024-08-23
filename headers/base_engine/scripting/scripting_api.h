@@ -465,7 +465,7 @@ IMPL_getNoise2d(WrenVM* vm)
     noise_impl::noise_handles.at(handle).warp.DomainWarp(x, y);
   }
 
-  f64 val = noise_impl::noise_handles.at(handle).noise.GetNoise(x, y);
+  f64 val = (noise_impl::noise_handles.at(handle).noise.GetNoise(x, y) + 1.0) / 2.0;
   wrenSetSlotDouble(vm, 0, val);
 }
 
@@ -484,7 +484,7 @@ IMPL_getNoise3d(WrenVM* vm)
     noise_impl::noise_handles.at(handle).warp.DomainWarp(x, y, z);
   }
 
-  f64 val = noise_impl::noise_handles.at(handle).noise.GetNoise(x, y, z);
+  f64 val = (noise_impl::noise_handles.at(handle).noise.GetNoise(x, y, z) + 1.0) / 2.0;
   wrenSetSlotDouble(vm, 0, val);
 }
 

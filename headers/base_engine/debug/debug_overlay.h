@@ -88,18 +88,17 @@ struct debug_overlay_t
 
     shader.use();
 
-    glm::mat4 _projection =
-        glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 1000.0f);
-    glm::mat4 _view = camera->get_view_matrix();
-    glm::mat4 model = glm::mat4(1.0f);
-    model           = glm::translate(model, {1.f, 1.f, 1.f});
-    model           = glm::scale(model, {1.f, 1.f, 1.f});
+    glm::mat4 _projection = glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 10'000.0f);
+    glm::mat4 _view       = camera->get_view_matrix();
+    glm::mat4 model       = glm::mat4(1.0f);
+    model                 = glm::translate(model, {1.f, 1.f, 1.f});
+    model                 = glm::scale(model, {1.f, 1.f, 1.f});
 
     shader.setMat4("projection", _projection);
     shader.setMat4("view", _view);
     shader.setMat4("model", model);
     shader.setVec4("in_color", glm::vec4{(f32)((_col >> 24) & 0xff) / 255.f, (f32)((_col >> 16) & 0xff) / 255.f,
-                                         (f32)((_col >> 8) & 0xff) / 255.f, (f32)((_col)&0xff) / 255.f});
+                                         (f32)((_col >> 8) & 0xff) / 255.f, (f32)((_col) & 0xff) / 255.f});
 
     if (_wireframe)
     {
@@ -144,18 +143,17 @@ struct debug_overlay_t
 
     shader.use();
 
-    glm::mat4 _projection =
-        glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 1000.0f);
-    glm::mat4 _view = camera->get_view_matrix();
-    glm::mat4 model = glm::mat4(1.0f);
-    model           = glm::translate(model, {1.f, 1.f, 1.f});
-    model           = glm::scale(model, {1.f, 1.f, 1.f});
+    glm::mat4 _projection = glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 10'000.0f);
+    glm::mat4 _view       = camera->get_view_matrix();
+    glm::mat4 model       = glm::mat4(1.0f);
+    model                 = glm::translate(model, {1.f, 1.f, 1.f});
+    model                 = glm::scale(model, {1.f, 1.f, 1.f});
 
     shader.setMat4("projection", _projection);
     shader.setMat4("view", _view);
     shader.setMat4("model", model);
     shader.setVec4("in_color", glm::vec4{(f32)((_col >> 24) & 0xff) / 255.f, (f32)((_col >> 16) & 0xff) / 255.f,
-                                         (f32)((_col >> 8) & 0xff) / 255.f, (f32)((_col)&0xff) / 255.f});
+                                         (f32)((_col >> 8) & 0xff) / 255.f, (f32)((_col) & 0xff) / 255.f});
 
     if (_wireframe)
     {
@@ -204,18 +202,17 @@ struct debug_overlay_t
 
     shader.use();
 
-    glm::mat4 _projection =
-        glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 1000.0f);
-    glm::mat4 _view = camera->get_view_matrix();
-    glm::mat4 model = glm::mat4(1.0f);
-    model           = glm::translate(model, {1.f, 1.f, 1.f});
-    model           = glm::scale(model, {1.f, 1.f, 1.f});
+    glm::mat4 _projection = glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 10'000.0f);
+    glm::mat4 _view       = camera->get_view_matrix();
+    glm::mat4 model       = glm::mat4(1.0f);
+    model                 = glm::translate(model, {1.f, 1.f, 1.f});
+    model                 = glm::scale(model, {1.f, 1.f, 1.f});
 
     shader.setMat4("projection", _projection);
     shader.setMat4("view", _view);
     shader.setMat4("model", model);
     shader.setVec4("in_color", glm::vec4{(f32)((_col >> 24) & 0xff) / 255.f, (f32)((_col >> 16) & 0xff) / 255.f,
-                                         (f32)((_col >> 8) & 0xff) / 255.f, (f32)((_col)&0xff) / 255.f});
+                                         (f32)((_col >> 8) & 0xff) / 255.f, (f32)((_col) & 0xff) / 255.f});
 
     if (_wireframe)
     {
@@ -266,18 +263,17 @@ struct debug_overlay_t
 
     shader.use();
 
-    glm::mat4 _projection =
-        glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 1000.0f);
-    glm::mat4 _view = camera->get_view_matrix();
-    glm::mat4 model = glm::mat4(1.0f);
-    model           = glm::translate(model, {1.f, 1.f, 1.f});
-    model           = glm::scale(model, {1.f, 1.f, 1.f});
+    glm::mat4 _projection = glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 10'000.0f);
+    glm::mat4 _view       = camera->get_view_matrix();
+    glm::mat4 model       = glm::mat4(1.0f);
+    model                 = glm::translate(model, {1.f, 1.f, 1.f});
+    model                 = glm::scale(model, {1.f, 1.f, 1.f});
 
     shader.setMat4("projection", _projection);
     shader.setMat4("view", _view);
     shader.setMat4("model", model);
     shader.setVec4("in_color", glm::vec4{(f32)((_col >> 24) & 0xff) / 255.f, (f32)((_col >> 16) & 0xff) / 255.f,
-                                         (f32)((_col >> 8) & 0xff) / 255.f, (f32)((_col)&0xff) / 255.f});
+                                         (f32)((_col >> 8) & 0xff) / 255.f, (f32)((_col) & 0xff) / 255.f});
 
     if (_wireframe)
     {
@@ -323,18 +319,17 @@ struct debug_overlay_t
 
     shader.use();
 
-    glm::mat4 _projection =
-        glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 1000.0f);
-    glm::mat4 _view = camera->get_view_matrix();
-    glm::mat4 model = glm::mat4(1.0f);
-    model           = glm::translate(model, {1.f, 1.f, 1.f});
-    model           = glm::scale(model, {1.f, 1.f, 1.f});
+    glm::mat4 _projection = glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 10'000.0f);
+    glm::mat4 _view       = camera->get_view_matrix();
+    glm::mat4 model       = glm::mat4(1.0f);
+    model                 = glm::translate(model, {1.f, 1.f, 1.f});
+    model                 = glm::scale(model, {1.f, 1.f, 1.f});
 
     shader.setMat4("projection", _projection);
     shader.setMat4("view", _view);
     shader.setMat4("model", model);
     shader.setVec4("in_color", glm::vec4{(f32)((_col >> 24) & 0xff) / 255.f, (f32)((_col >> 16) & 0xff) / 255.f,
-                                         (f32)((_col >> 8) & 0xff) / 255.f, (f32)((_col)&0xff) / 255.f});
+                                         (f32)((_col >> 8) & 0xff) / 255.f, (f32)((_col) & 0xff) / 255.f});
 
     if (_wireframe)
     {
@@ -380,18 +375,17 @@ struct debug_overlay_t
 
     shader.use();
 
-    glm::mat4 _projection =
-        glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 1000.0f);
-    glm::mat4 _view = camera->get_view_matrix();
-    glm::mat4 model = glm::mat4(1.0f);
-    model           = glm::translate(model, {1.f, 1.f, 1.f});
-    model           = glm::scale(model, {1.f, 1.f, 1.f});
+    glm::mat4 _projection = glm::perspective(glm::radians(camera->fov), (float)display_w / (float)display_h, 0.1f, 10'000.0f);
+    glm::mat4 _view       = camera->get_view_matrix();
+    glm::mat4 model       = glm::mat4(1.0f);
+    model                 = glm::translate(model, {1.f, 1.f, 1.f});
+    model                 = glm::scale(model, {1.f, 1.f, 1.f});
 
     shader.setMat4("projection", _projection);
     shader.setMat4("view", _view);
     shader.setMat4("model", model);
     shader.setVec4("in_color", glm::vec4{(f32)((_col >> 24) & 0xff) / 255.f, (f32)((_col >> 16) & 0xff) / 255.f,
-                                         (f32)((_col >> 8) & 0xff) / 255.f, (f32)((_col)&0xff) / 255.f});
+                                         (f32)((_col >> 8) & 0xff) / 255.f, (f32)((_col) & 0xff) / 255.f});
 
     if (_wireframe)
     {

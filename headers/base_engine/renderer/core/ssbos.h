@@ -32,6 +32,11 @@ struct ssbo_t
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
     current_size = _new_byte_size;
+
+    if (!ssbo_handle)
+    {
+      assert(false);
+    }
   }
 
   u0

@@ -55,6 +55,8 @@
 #include <base_engine/renderer/core/frame_buffer.h>
 
 #include <base_engine/world_generation/ground_chunking.h>
+#include <base_engine/world_generation/ground_chunk.h>
+#include <base_engine/scripting/scripting_api.h>
 
 constinit f32 lastX = 1920.f / 2.0f;
 constinit f32 lastY = 1080.f / 2.0f;
@@ -148,7 +150,8 @@ main(i32 argc, char** argv) -> i32
   lod_static_world_model_t LOD_tree{"lod_test_tree"};
 
   // ground_mesh_chunk_t plane{};
-  ground_mesh_system world{};
+  // ground_mesh_system world{};
+  world_gen::ground_chunk ground;
 
   static_world_model_t skybox3d_model{"skybox"};
 
@@ -162,6 +165,17 @@ main(i32 argc, char** argv) -> i32
           [&](GLFWwindow* _window)
           {
             debug_menu.init_menu(_window);
+
+            debug_menu.add_debug_widget("terrain", debug_menu_t::debug_widget_type::button, "clear noise handles",
+                                        [&](f64 val)
+                                        {
+                                          scripting::noise_impl::noise_handles.clear();
+                                          while (!scripting::noise_impl::returned_handles.empty())
+                                          {
+                                            scripting::noise_impl::returned_handles.pop();
+                                          }
+                                          scripting::noise_impl::last_handle = 1;
+                                        });
 
             debug_menu.add_user_script_module("terrain", "../scripts/terrain.wren", "terrain", "terrain_value(_,_,_)",
                                               "needs class 'terrain' with method 'terrain_value(x,y,z) -> double'");
@@ -186,7 +200,6 @@ uniform sampler2D texture_diffuse;
 
 void main()
 {
-
   vec3 col =vec3(1,1,1) - texture(texture_diffuse, TexCoords).rgb;
   //float avg = (col.r + col.g + col.b) / 3;
  // FragColor = vec4(1-avg,1-avg,1-avg, 1);
@@ -198,7 +211,8 @@ void main()
             // plane.load_shader();
             // plane.initialize(0);
 
-            world.init(debug_menu);
+            // world.init(debug_menu);
+            ground.init(10000, debug_menu);
 
             game_renderer.model_renderer.add_static_world_model("tree1", "../data/trees/trees/westfalltree03.obj");
 
@@ -275,11 +289,11 @@ void main()
             glEnable(GL_BLEND);
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-            glm::mat4 projection = glm::perspective(glm::radians(game_renderer.game_camera.fov), (float)1920 / (float)1080, 0.1f, 10'000.f);
+            glm::mat4 projection = glm::perspective(glm::radians(game_renderer.game_camera.fov), 1920.f / 1080.f, 0.1f, 10'000.f);
             glm::mat4 view       = game_renderer.game_camera.get_view_matrix();
 
             skybox3d_model.vec_position = game_renderer.game_camera.vec_position;
-            skybox3d_model.vec_rotation = glm::vec3{0, (f32)glfwGetTime() / 60.f, 0};
+            // skybox3d_model.vec_rotation = glm::vec3{0, (f32)glfwGetTime() / 60.f, 0};
 
             const auto renderings = [&]() {};
 
@@ -290,11 +304,14 @@ void main()
             // plane.draw(game_renderer.display_w, game_renderer.display_h, game_renderer.game_camera, lod::detail_level::lod_detail_potato,
             //            0xffffffff);
 
-            world.draw(game_renderer.display_w, game_renderer.display_h, game_renderer.game_camera);
+            // puts("new frame");
 
-            instanced_model2.draw(projection, view);
-            instanced_model.draw(projection, view);
-            LOD_tree.draw(projection, view, lod::detail_level::lod_detail_full);
+            ground.draw(projection, view, game_renderer.display_w, game_renderer.display_h, game_renderer.game_camera);
+            // world.draw(game_renderer.display_w, game_renderer.display_h, game_renderer.game_camera);
+
+            // instanced_model2.draw(projection, view);
+            // instanced_model.draw(projection, view);
+            //    LOD_tree.draw(projection, view, lod::detail_level::lod_detail_full);
 
             // post_processor.bake(pp_pass1, renderings);
             // post_processor.draw(pp_pass1);

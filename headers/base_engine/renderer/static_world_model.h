@@ -40,12 +40,13 @@ struct static_world_model_t
     shader.setMat4("view", _view);
 
     glm::mat4 model = glm::mat4(1.0f);
-    model           = glm::translate(model, vec_position);
-    model           = glm::scale(model, vec_scale);
 
     model = glm::rotate(model, vec_rotation.x, glm::vec3{1, 0, 0});
     model = glm::rotate(model, vec_rotation.y, glm::vec3{0, 1, 0});
     model = glm::rotate(model, vec_rotation.z, glm::vec3{0, 0, 1});
+
+    model = glm::translate(model, vec_position);
+    model = glm::scale(model, vec_scale);
 
     shader.setMat4("model", model);
     draw_model.draw(shader, instance_count);
