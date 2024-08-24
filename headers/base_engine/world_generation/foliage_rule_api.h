@@ -34,6 +34,10 @@ struct instanced_foliage_rule
   since an ellipse can be defined as two radii this is vec2 not a vec3 even though it works for 3 dimensions
   */
   glm::vec2 min_dist{};
+  /*
+   this sets the minimum distance exactly to bounding box size of the object
+   */
+  bool min_dist_is_bbox = true;
 
   /*
   for figuring out if the currect foliage object should generate at this normal value
@@ -56,11 +60,6 @@ struct instanced_foliage_rule
   std::vector<generation_direction_rule> direction_rules{};
 
   /*
-  this sets the minimum distance exactly to bounding box size of the object
-  */
-  bool min_dist_is_bbox = true;
-
-  /*
   flags to be set by the generator script
   set_to_ground: rotate the instance model so that it sits on the ground properly
   others are self explanatory
@@ -69,6 +68,5 @@ struct instanced_foliage_rule
 };
 
 static const std::unordered_map<usize, instanced_foliage_rule> foliage_rule_objects;
-
 
 } // namespace chunk_foliage

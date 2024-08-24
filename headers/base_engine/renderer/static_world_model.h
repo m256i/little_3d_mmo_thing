@@ -6,6 +6,7 @@
 #include "model.h"
 #include <glm/vec3.hpp>
 #include <string_view>
+#include "GLFW/glfw3.h"
 
 static constexpr std::string_view basic_model_vs{"../basic_model.vs"};
 static constexpr std::string_view basic_model_fs{"../basic_model.fs"};
@@ -41,12 +42,12 @@ struct static_world_model_t
 
     glm::mat4 model = glm::mat4(1.0f);
 
+    model = glm::translate(model, vec_position);
+    model = glm::scale(model, vec_scale);
+
     model = glm::rotate(model, vec_rotation.x, glm::vec3{1, 0, 0});
     model = glm::rotate(model, vec_rotation.y, glm::vec3{0, 1, 0});
     model = glm::rotate(model, vec_rotation.z, glm::vec3{0, 0, 1});
-
-    model = glm::translate(model, vec_position);
-    model = glm::scale(model, vec_scale);
 
     shader.setMat4("model", model);
     draw_model.draw(shader, instance_count);
@@ -58,6 +59,7 @@ struct static_world_model_t
     shader.use();
     shader.setMat4("projection", _projection);
     shader.setMat4("view", _view);
+    shader.setFloat("curr_time", (f32)glfwGetTime());
     draw_model.draw(shader, instance_count);
   }
 };

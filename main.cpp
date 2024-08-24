@@ -293,7 +293,7 @@ void main()
             glm::mat4 view       = game_renderer.game_camera.get_view_matrix();
 
             skybox3d_model.vec_position = game_renderer.game_camera.vec_position;
-            // skybox3d_model.vec_rotation = glm::vec3{0, (f32)glfwGetTime() / 60.f, 0};
+            skybox3d_model.vec_rotation = glm::vec3{0, (f32)glfwGetTime() / 60.f, 0};
 
             const auto renderings = [&]() {};
 

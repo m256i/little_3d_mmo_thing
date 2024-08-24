@@ -25,8 +25,11 @@ main()
 
   float dist = camera_distance;
 
-  vec2 uv  = vec2(Pos.x * 0.75, Pos.z * 0.75);
-  vec2 uv2 = vec2(Pos.y * 0.75, Pos.z * 0.75);
+  vec2 uv  = vec2(Pos.x, Pos.z);
+  vec2 uv2 = vec2(Pos.y, Pos.z);
+
+  uv  = mod(uv * 50, vec2(1, 1));
+  uv2 = mod(uv2 * 50, vec2(1, 1));
 
   vec3 col      = SUN_COLOR * SUN_STRENGTH;
   vec3 lightpos = vec3(100.0, -100.0, 200.0);

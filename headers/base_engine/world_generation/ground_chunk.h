@@ -31,7 +31,7 @@ struct ground_chunk
     /*
     do this for all instanced models the scrip asks for
     */
-    test_foliage_model.load_model("../data/foliage/vineyard/gilneas_lumpygrass01.obj");
+    test_foliage_model.load_model("../data/foliage/7dl_dalarantallgrass_c01.obj");
     test_foliage_model.init_shader("../basic_model_instanced.vs", "../basic_model_instanced.fs");
 
     mesh.initialize(0, chunk_scale, debug_menu, _coords);
@@ -114,7 +114,7 @@ struct ground_chunk
       std::cout << "generating grass on point: " << point.location.x << " " << point.location.y << "" << point.location.z << "\n";
       test_foliage_model.get_instance_data()[i].world_position = point.location;
       test_foliage_model.get_instance_data()[i].world_rotation = point.normal;
-      test_foliage_model.get_instance_data()[i].world_scale    = glm::vec3{10};
+      test_foliage_model.get_instance_data()[i].world_scale    = glm::vec3{20};
       ++i;
     }
 
