@@ -117,6 +117,7 @@ struct instanced_static_world_model
     if (glm::length(rotation_axis) > 0.0001f)
     {
       model = glm::rotate(model, angle, rotation_axis);
+      model = glm::rotate(model, (f32)rand(), {0, 1, 0});
     }
 
     model = glm::scale(model, instance.world_scale);

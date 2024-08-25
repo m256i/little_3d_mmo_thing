@@ -6,6 +6,7 @@
 #include "../renderer/instanced_model.h"
 #include "../debug/debug_overlay.h"
 
+#include "../utils/zip.h"
 namespace world_gen
 {
 struct ground_chunk
@@ -108,14 +109,12 @@ struct ground_chunk
 
     test_foliage_model.set_instance_count(foliage_points.size());
 
-    usize i = 0;
-    for (auto& point : foliage_points)
+    for (const auto& [i, point] : utils::zip(foliage_points))
     {
       std::cout << "generating grass on point: " << point.location.x << " " << point.location.y << "" << point.location.z << "\n";
       test_foliage_model.get_instance_data()[i].world_position = point.location;
       test_foliage_model.get_instance_data()[i].world_rotation = point.normal;
       test_foliage_model.get_instance_data()[i].world_scale    = glm::vec3{20};
-      ++i;
     }
 
     test_foliage_model.reapply_all_translations();

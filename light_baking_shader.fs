@@ -19,6 +19,6 @@ main()
 
   vec4 textColor = (texture(texture_diffuse1, TexCoords);
 
-
+  uint funny = 0;
   FragColor = textColor + fogColor;
 }

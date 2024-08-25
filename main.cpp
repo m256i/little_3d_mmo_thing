@@ -58,6 +58,8 @@
 #include <base_engine/world_generation/ground_chunk.h>
 #include <base_engine/scripting/scripting_api.h>
 
+#include <base_engine/renderer/core/draw_buffer.h>
+
 constinit f32 lastX = 1920.f / 2.0f;
 constinit f32 lastY = 1080.f / 2.0f;
 
@@ -132,12 +134,30 @@ draw_tree_recursive(const tree_node_t& branch)
   }
 }
 
+/*
+
+TODO: combine drawbuffers of tris and quads into one and use only one Drawcall
+
+*/
+
+// clang-format off
+renderer::core::static_drawbuffer<
+  renderer::core::drawbuf_attrib<"position", glm::vec3>,
+  renderer::core::drawbuf_attrib<"normal", float, float ,float>
+> buffer;
+// clang-format on
+
 INITIALIZE_EASYLOGGINGPP
 
 auto
 main(i32 argc, char** argv) -> i32
 {
   START_EASYLOGGINGPP(argc, argv);
+
+  LOG(DEBUG) << buffer.get_name_index<"position">();
+  LOG(DEBUG) << buffer.get_name_index<"normal">();
+
+  LOG(DEBUG) << buffer.get_attribte_offset<"normal">();
 
   std::unordered_map<u32, debug_bbox_t> debug_boxes{};
   debug_menu_t debug_menu{};
@@ -164,6 +184,8 @@ main(i32 argc, char** argv) -> i32
       .init(
           [&](GLFWwindow* _window)
           {
+            buffer.initialize_gpu_buffer();
+
             debug_menu.init_menu(_window);
 
             debug_menu.add_debug_widget("terrain", debug_menu_t::debug_widget_type::button, "clear noise handles",

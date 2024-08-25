@@ -182,7 +182,7 @@ struct color_t
 };
 
 template <size_t TBegin, size_t TEnd, size_t TStep, typename TLambda>
-consteval void
+constexpr void
 for_constexpr(TLambda&& _lambda)
 {
   if constexpr (TBegin < TEnd)

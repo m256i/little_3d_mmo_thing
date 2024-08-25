@@ -6,7 +6,7 @@ class terrain {
 	static on_module_init() {
 		__noise = Noise.new()
 		__noise.setNoiseType("OpenSimplex2")
-		__noise.setNoiseFreq(0.24)
+		__noise.setNoiseFreq(0.18)
 		__noise.setFractalType("None")
 	}
 	
@@ -17,4 +17,5 @@ class terrain {
 		return 1-val
 	}
 }
+
 

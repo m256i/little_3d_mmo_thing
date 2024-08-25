@@ -29,6 +29,7 @@ main()
   vec3 camera_pos = vec3(view[0][2], view[1][2], view[2][2]);
   camera_distance = length(view * instance_model * vec4(pPos, 1.0) - vec4(camera_pos, 0));
 
+  // pPos.x += cos(curr_time + length(world_position + aPos)) * max(aPos.y, 0);
   pPos.x += cos(curr_time * 1.5 + length(world_position + aPos * 0.5) * max(aPos.y, 0)) * 0.08 * max(aPos.y, 0);
   pPos.z += sin(curr_time * 1.5 + length(world_position + aPos * 0.5) * max(aPos.y, 0)) * 0.08 * max(aPos.y, 0);
 
