@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <glad/glad.h>
 #include <cassert>
+#include <span>
 
 namespace renderer::core
 {
@@ -165,32 +166,47 @@ struct drawbuf_attrib
   constexpr static std::string_view attribute_name{TName.to_view()};
 };
 
-template <typename T>
-struct is_drawbuf_attrib : std::false_type
+enum class drawbuffer_type
 {
+  tris,
+  quads,
+  tri_strips,
+  lines,
+  points
 };
-
-template <ct_string TName, typename... TTypes>
-struct is_drawbuf_attrib<drawbuf_attrib<TName, TTypes...>> : std::true_type
-{
-};
-
-template <typename T>
-inline constexpr bool is_drawbuf_attrib_v = is_drawbuf_attrib<T>::value;
 
 /*
 the class that does the thing!
 */
-template <typename... TAttributes>
+template <drawbuffer_type TDrawBufType = drawbuffer_type::tris, typename... TAttributes>
 struct static_drawbuffer
 {
+private:
+  template <typename T>
+  struct is_drawbuf_attrib : std::false_type
+  {
+  };
+
+  template <ct_string TName, typename... TTypes>
+  struct is_drawbuf_attrib<drawbuf_attrib<TName, TTypes...>> : std::true_type
+  {
+  };
+
+  template <typename T>
+  inline static constexpr bool is_drawbuf_attrib_v = is_drawbuf_attrib<T>::value;
+
+public:
   static_assert((is_drawbuf_attrib_v<TAttributes> && ...), "all parameters must be instantiations of drawbuf_attrib.");
 
   /*
   ordering sequential! always!
   */
+
+  /* used to see which drawbuffers can be combined later */
+  constexpr static auto drawbuffer_type = TDrawBufType;
+
   constexpr static std::tuple<TAttributes...> attribute_row;
-  std::vector<std::tuple<TAttributes...>> vertex_data_cpu_buffer{};
+  std::vector<u8> vertex_data_cpu_buffer{};
   std::vector<i32> cpu_index_buffer{};
 
   bool initialized = false;
@@ -198,14 +214,14 @@ struct static_drawbuffer
   u32 vao_handle{}, vbo_handle{}, ebo_handle{};
 
   bool
-  initialize_gpu_buffer()
+  buffer_to_gpu()
   {
     if (initialized)
     {
       return false;
     }
 
-    assert(vertex_data_cpu_buffer.size() == cpu_index_buffer.size());
+    assert(vertex_data_cpu_buffer.size() / sizeof(attribute_row) == cpu_index_buffer.size());
 
     glGenVertexArrays(1, &vao_handle);
     glGenBuffers(1, &vbo_handle);
@@ -216,7 +232,7 @@ struct static_drawbuffer
     */
     glBindVertexArray(vao_handle);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_handle);
-    glBufferData(GL_ARRAY_BUFFER, vertex_data_cpu_buffer.size() * sizeof(attribute_row), vertex_data_cpu_buffer.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertex_data_cpu_buffer.size(), vertex_data_cpu_buffer.data(), GL_STATIC_DRAW);
 
     /*
     buffer the indices
@@ -265,7 +281,21 @@ struct static_drawbuffer
 
     /* reset */
     glBindVertexArray(0);
+
+    initialized = true;
     return true;
+  }
+
+  bool
+  set_buffers(u0 *_vertex_buf, usize _vertex_buf_len, const std::span<i32> &_idx_buffer)
+  {
+    vertex_data_cpu_buffer.resize(_vertex_buf_len);
+    /* @FIXME: in the future replace with hardware specific AVX2/AVX512 memcpy version */
+    std::memcpy(vertex_data_cpu_buffer.data(), _vertex_buf, _vertex_buf_len);
+
+    cpu_index_buffer.resize(_idx_buffer.size());
+    /* @FIXME: in the future replace with hardware specific AVX2/AVX512 memcpy version */
+    std::memcpy(cpu_index_buffer.data(), _idx_buffer.data(), _idx_buffer.size());
   }
 
   template <ct_string TStr>

@@ -14,6 +14,14 @@ class hash
   {
     return I == 1 ? (OFFSET_BASIS ^ str[0]) * FNV_PRIME : (fnvHashConst(str, I - 1) ^ str[I - 1]) * FNV_PRIME;
   }
+
+  template <usize N>
+  static constexpr u32
+  fnvHashConst(std::array<char, N> str, usize I = N)
+  {
+    return I == 1 ? (OFFSET_BASIS ^ str[0]) * FNV_PRIME : (fnvHashConst(str, I - 1) ^ str[I - 1]) * FNV_PRIME;
+  }
+
   static u32
   fnvHash(const char* str)
   {
@@ -39,6 +47,11 @@ public:
   // calulate in compile-time
   template <u32 N>
   constexpr hash(const char (&str)[N]) : hash_value(fnvHashConst(str))
+  {
+  }
+
+  template <usize N>
+  constexpr hash(std::array<char, N> str) : hash_value(fnvHashConst(str))
   {
   }
   // output result

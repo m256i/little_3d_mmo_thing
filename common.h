@@ -192,18 +192,82 @@ for_constexpr(TLambda&& _lambda)
   }
 }
 
+template <usize TArrayLen1, usize TArrayLen2, typename TArrayType>
+static constexpr std::array<TArrayType, TArrayLen1 + TArrayLen2 - 1>
+concat_arrays(const std::array<TArrayType, TArrayLen1> a, const std::array<TArrayType, TArrayLen2> b)
+{
+  std::array<TArrayType, TArrayLen1 + TArrayLen2 - 1> out;
+  for (usize i = 0; i != TArrayLen1 - 1 /* we skip the nullterminator here*/; ++i)
+  {
+    out[i] = a[i];
+  }
+  for (usize i = 0; i != TArrayLen2; ++i)
+  {
+    out[i + TArrayLen1 - 1] = b[i];
+  }
+  return out;
+}
+
+/*
+@FIXME: might be borken
+*/
+template <std::size_t N>
+constexpr std::array<char, N>
+string_view_to_array(std::string_view str)
+{
+  std::array<char, N> arr{};
+  std::size_t i = 0;
+
+  for (; i < str.size() && i < N; ++i)
+  {
+    arr[i] = str[i];
+  }
+
+  // The remaining elements are already zero-initialized to '\0'
+  return arr;
+}
+
+inline std::string
+nullterminate_view(const std::string_view& view)
+{
+  return std::string(view);
+}
+
 template <typename TCharArr, std::size_t TSize>
 struct ct_string
 {
   consteval ct_string(const TCharArr (&arr)[TSize]) : data{std::to_array(arr)} {}
   consteval ct_string(const std::array<TCharArr, TSize> arr) : data{arr} {}
+  consteval ct_string(const ct_string<TCharArr, TSize>& other) : data{other.data} {}
 
-  [[nodiscard]] consteval std::string_view
+  consteval ct_string(const std::string_view& sv) : data{string_view_to_array<TSize>(sv)} {}
+
+  template <usize TOtherSize, usize TOtherSize1>
+  consteval ct_string(const ct_string<TCharArr, TOtherSize>& other0, const ct_string<TCharArr, TOtherSize1>& other1)
+      : data{concat_arrays(other0.data, other1.data)}
+  {
+  }
+
+  [[nodiscard]] constexpr std::string_view
   to_view() const noexcept
   {
-    return std::string_view{data.begin(), data.end()};
+    return std::string_view{data.begin(), data.end() - 1};
   }
-  std::array<TCharArr, TSize> data;
+
+  const std::string
+  to_string() const
+  {
+    return std::string(data.data());
+  }
+
+  std::string
+  to_string()
+  {
+    return std::string(data.data());
+  }
+
+  static constexpr usize size = TSize;
+  const std::array<TCharArr, TSize> data;
 };
 
 template <typename TType>

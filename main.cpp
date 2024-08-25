@@ -59,6 +59,7 @@
 #include <base_engine/scripting/scripting_api.h>
 
 #include <base_engine/renderer/core/draw_buffer.h>
+#include <base_engine/renderer/core/shader.h>
 
 constinit f32 lastX = 1920.f / 2.0f;
 constinit f32 lastY = 1080.f / 2.0f;
@@ -141,10 +142,16 @@ TODO: combine drawbuffers of tris and quads into one and use only one Drawcall
 */
 
 // clang-format off
-renderer::core::static_drawbuffer<
+renderer::core::static_drawbuffer<renderer::core::drawbuffer_type::tris,
   renderer::core::drawbuf_attrib<"position", glm::vec3>,
   renderer::core::drawbuf_attrib<"normal", float, float ,float>
 > buffer;
+
+renderer::core::shader<"world_mesh", "../shaders/world_mesh",
+  renderer::core::shader_input<"position", glm::vec3>,
+  renderer::core::shader_input<"normal", glm::vec3>,
+  renderer::core::shader_output<"funny", i32>
+> shader_thing;
 // clang-format on
 
 INITIALIZE_EASYLOGGINGPP
@@ -184,7 +191,17 @@ main(i32 argc, char** argv) -> i32
       .init(
           [&](GLFWwindow* _window)
           {
-            buffer.initialize_gpu_buffer();
+            // std::vector<float> vertex_buffer;
+            // std::vector<int> idd_buffer;
+            // buffer.set_buffers(vertex_buffer.data(), vertex_buffer.size() * sizeof(float), idd_buffer);
+            // buffer.buffer_to_gpu();
+
+            LOG(DEBUG) << std::tuple_size_v<decltype(shader_thing.shader_inputs)>;
+            LOG(DEBUG) << std::tuple_size_v<decltype(shader_thing.shader_outputs)>;
+
+            LOG(DEBUG) << std::get<0>(shader_thing.shader_inputs).name;
+
+            shader_thing.setup();
 
             debug_menu.init_menu(_window);
 
