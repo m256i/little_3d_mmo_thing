@@ -1,32 +1,22 @@
 #pragma once
 
 #include <common.h>
-#include <stack>
+#include <vector>
 
 /*
-
-
-auto pipeline = model_drawbuffer > pipeline::combine{draw_shader > screen_tex, ssao_shader > ssao_tex} > combine_shader > screen_tex;
-
-
-pipeline.evaluate();
-
-
+auto pipeline = model_drawbuffer > pipeline::combine{draw_shader > screen_tex, ssao_shader > ssao_tex} > combine_shader >
+pipeline::screen_buffer;
 */
 
 namespace renderer::core
 {
 
-enum class pipeline_stage_type
-{
-  none,
-  vertices,
-  fragments,
-  texture
-};
-
 struct vertex_buffer_pipeline_stage
 {
+
+  /*
+  TODO: final pipeline stage that has this function not a random one like this
+  */
   u0
   evaluate()
   {
@@ -48,8 +38,13 @@ struct shader_pipeline_stage
 template <usize TColorAttachementCount>
 struct framebuffer_pipeline_stage
 {
-
   std::vector<std::function<void()>> pipeline_stage{};
 };
+
+/*
+TODO: screen framebuffer pipeline stage
+
+TODO: pipeline combination and also putting textures into shaders with an implied vertex buffer (fullscreen quad) maybe?
+*/
 
 } // namespace renderer::core
