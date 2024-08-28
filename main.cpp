@@ -150,7 +150,14 @@ renderer::core::static_drawbuffer<renderer::core::drawbuffer_type::tris,
 renderer::core::shader<"world_mesh", "../shaders/world_mesh",
   renderer::core::shader_input<"position", glm::vec3>,
   renderer::core::shader_input<"normal", glm::vec3>,
-  renderer::core::shader_output<"funny", i32>
+
+  renderer::core::texture2d_shader_input<"texture_diffure1">,
+
+  renderer::core::shader_uniform<"model", glm::mat4>,
+  renderer::core::shader_uniform<"view", glm::mat4>,
+  renderer::core::shader_uniform<"projection", glm::mat4>,
+  renderer::core::shader_output<"FragColor", glm::vec4>
+  renderer::core::shader_output<"FragColor", glm::vec4>
 > shader_thing;
 // clang-format on
 
@@ -186,6 +193,10 @@ main(i32 argc, char** argv) -> i32
 
   usize pp_pass1;
 
+  renderer::core::frame_buffer<renderer::core::frame_buffer_options<renderer::core::frame_buffer_option::has_depth_texture>{},
+                               {renderer::core::base_texture2d::texture_format::rgba}>
+      drawbuftest;
+
   return create_window("WoW Clone :D", false)
       .register_callback(glfwSetCursorPosCallback, mouse_callback)
       .init(
@@ -195,6 +206,11 @@ main(i32 argc, char** argv) -> i32
             // std::vector<int> idd_buffer;
             // buffer.set_buffers(vertex_buffer.data(), vertex_buffer.size() * sizeof(float), idd_buffer);
             // buffer.buffer_to_gpu();
+
+            if (drawbuftest.initialize(1920, 1080))
+            {
+              std::cout << "drawbuffer test success!\n";
+            }
 
             LOG(DEBUG) << std::tuple_size_v<decltype(shader_thing.shader_inputs)>;
             LOG(DEBUG) << std::tuple_size_v<decltype(shader_thing.shader_outputs)>;

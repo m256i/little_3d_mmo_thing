@@ -1,6 +1,6 @@
 #pragma once
 
-#include "base_engine/utils/zip.h"
+#include "gl_type_translations.h"
 #include <common.h>
 #include <glm/glm.hpp>
 #include <glad/glad.h>
@@ -154,6 +154,23 @@ struct internal_shader
 };
 } // namespace detail
 
+namespace detail
+{
+struct impl_unique_shader_tag_type
+{
+};
+} // namespace detail
+
+template <ct_string TName>
+struct texture2d_shader_input
+{
+  static constexpr auto name = TName.to_view();
+  /*
+  type used since we have checks in the shader setup code
+  */
+  using type = detail::impl_unique_shader_tag_type;
+};
+
 template <ct_string TName, typename TType>
 struct shader_input
 {
@@ -163,6 +180,13 @@ struct shader_input
 
 template <ct_string TName, typename TType>
 struct shader_output
+{
+  static constexpr auto name = TName.to_view();
+  using type                 = TType;
+};
+
+template <ct_string TName, typename TType>
+struct shader_uniform
 {
   static constexpr auto name = TName.to_view();
   using type                 = TType;
@@ -192,6 +216,26 @@ private:
   {
   };
 
+  template <typename T>
+  struct is_shader_uniform : std::false_type
+  {
+  };
+
+  template <ct_string TName, typename TType>
+  struct is_shader_uniform<shader_uniform<TName, TType>> : std::true_type
+  {
+  };
+
+  template <typename T>
+  struct is_texture_input : std::false_type
+  {
+  };
+
+  template <ct_string TName>
+  struct is_texture_input<texture2d_shader_input<TName>> : std::true_type
+  {
+  };
+
   template <template <typename> class TPredicate, typename... Ts>
   struct filter_types;
 
@@ -213,25 +257,43 @@ private:
   template <template <typename> class TPredicate, typename... Ts>
   using filter_types_t = typename filter_types<TPredicate, Ts...>::type;
 
+  template <typename TTuple>
+  static consteval bool
+  tuple_contains_texture()
+  {
+    bool out = false;
+    for_constexpr<0, std::tuple_size_v<TTuple>, 1>(
+        [&](auto ite)
+        {
+          using current_type = std::tuple_element_t<ite, TTuple>;
+          if (std::is_same_v<typename current_type::type, detail::impl_unique_shader_tag_type>)
+          {
+            out = true;
+          }
+        });
+    return out;
+  }
+
 public:
   static constexpr auto shader_inputs  = filter_types_t<is_shader_input, TShaderInOutNodes...>{};
   static constexpr auto shader_outputs = filter_types_t<is_shader_output, TShaderInOutNodes...>{};
+  static constexpr auto shader_uniforms =
+      std::tuple_cat(filter_types_t<is_shader_uniform, TShaderInOutNodes...>{}, filter_types_t<is_texture_input, TShaderInOutNodes...>{});
 
   detail::internal_shader internal_shader{TShaderName.to_view()};
 
   bool has_vertex = false, has_fragment = false, has_tesc = false, has_tese = false;
-
   bool initialized = false;
 
+  /*
+    @TODO: code cleanup some day later. this works but its really ugly
+  */
   bool
   setup()
   {
     const std::string shader_name_base = nullterminate_view(TShaderPath.to_view());
     std::string shader_real_name_base  = shader_name_base.substr(shader_name_base.find_last_of('/') + 1, shader_name_base.length());
     const std::string dir              = std::string(shader_name_base).substr(0, shader_name_base.find_last_of('/'));
-
-    LOG(DEBUG) << shader_name_base;
-    LOG(DEBUG) << dir;
 
     if (shader_name_base == dir)
     {
@@ -284,53 +346,334 @@ public:
 
     std::cout << "has vertex: " << has_vertex << " has fragment: " << has_fragment << "\n";
 
-    internal_shader.load_from_path(vertex_name, fragment_name, tesc_name, tese_name);
-
-    char name[256];
-    i32 name_length = 0;
-
-    int ioCount;
-    glGetProgramiv(internal_shader.id, GL_ACTIVE_ATTRIBUTES, &ioCount);
-
-    std::cout << "ioCount" << ioCount << "\n";
-
-    for (int i = 0; i < ioCount; i++)
+    if (!internal_shader.load_from_path(vertex_name, fragment_name, tesc_name, tese_name))
     {
-      int size;
-      GLenum type;
-      glGetActiveAttrib(internal_shader.id, i, 256, &name_length, &size, &type, name);
-      std::cout << "found attribite: " << name << " size: " << size << " type: " << type << "\n";
+      return false;
     }
 
-    GLuint program = internal_shader.id; // Your shader program ID
-    GLint numOutputs;
-
-    // Query number of outputs
-    glGetProgramInterfaceiv(program, GL_PROGRAM_OUTPUT, GL_ACTIVE_RESOURCES, &numOutputs);
-
-    // To get detailed information about each output:
-    GLenum properties[] = {GL_NAME_LENGTH, GL_LOCATION, GL_TYPE};
-
-    for (int i = 0; i < numOutputs; ++i)
     {
-      GLint results[3];
-      glGetProgramResourceiv(program, GL_PROGRAM_OUTPUT, i, 3, properties, 3, nullptr, results);
+      char name[129];
+      i32 name_length = 0;
 
-      // Get the name of the output variable
-      std::vector<char> nameData(results[0]);
-      glGetProgramResourceName(program, GL_PROGRAM_OUTPUT, i, nameData.size(), nullptr, &nameData[0]);
-      std::string name(nameData.begin(), nameData.end() - 1);
+      i32 io_count{};
+      glGetProgramiv(internal_shader.id, GL_ACTIVE_ATTRIBUTES, &io_count);
 
-      GLint location = results[1];
-      GLenum type    = results[2];
+      std::vector<std::pair<std::string, GLenum>> found_inputs{};
+      found_inputs.reserve(io_count);
 
-      std::cout << "found output: " << name << " location: " << location << " type: " << type << "\n";
+      for (i32 i = 0; i < io_count; i++)
+      {
+        i32 size;
+        GLenum type;
+        glGetActiveAttrib(internal_shader.id, i, 256, &name_length, &size, &type, name);
+        found_inputs.push_back({std::string(name), type});
+      }
 
-      // Now, name, location, and type contain the information about the output variable
+      bool not_found = false, wrong_type = false;
+      std::string_view not_found_name;
+      std::string wrong_type_message;
+
+      /*
+      check if the c++ code requires inputs that are not present in the compiled shader
+      */
+      for_constexpr<0, std::tuple_size_v<decltype(shader_inputs)>, 1>(
+          [&](auto ite)
+          {
+            if (not_found || wrong_type)
+            {
+              return;
+            }
+
+            bool current_found = false, current_right_type = false;
+            GLenum _wrong_type               = 0;
+            constexpr static auto shader_ipt = std::get<ite>(shader_inputs);
+
+            if constexpr (std::is_same_v<typename decltype(shader_ipt)::type, detail::impl_unique_shader_tag_type>)
+            {
+              return;
+            }
+            else
+            {
+              for (const auto &_ipt_name : found_inputs)
+              {
+                if (shader_ipt.name == _ipt_name.first)
+                {
+                  current_found = true;
+                  if (glsl_type_translation<typename decltype(shader_ipt)::type>::gl_type == _ipt_name.second)
+                  {
+                    current_right_type = true;
+                  }
+                  else
+                  {
+                    _wrong_type = _ipt_name.second;
+                  }
+                }
+              }
+
+              if (!current_found)
+              {
+                not_found_name = shader_ipt.name;
+                not_found      = true;
+              }
+
+              if (!current_right_type)
+              {
+                wrong_type_message =
+                    "attribute expteced type: " + std::string(glsl_type_name_map<typename decltype(shader_ipt)::type>::value) +
+                    " got: " + std::string(glenum_type_to_strview(_wrong_type));
+                wrong_type = true;
+              }
+            }
+          });
+
+      /*
+       check if there are inputs declared and used in the shader file that the c++ code doesnt know about
+       */
+      for (const auto &_ipt_name : found_inputs)
+      {
+        bool current_needed = false;
+        for_constexpr<0, std::tuple_size_v<decltype(shader_inputs)>, 1>(
+            [&](auto ite)
+            {
+              constexpr static auto shader_ipt = std::get<ite>(shader_inputs);
+              if constexpr (std::is_same_v<typename decltype(shader_ipt)::type, detail::impl_unique_shader_tag_type>)
+              {
+                return;
+              }
+              else
+              {
+                if (shader_ipt.name == _ipt_name.first)
+                {
+                  current_needed = true;
+                }
+              }
+            });
+
+        if (!current_needed)
+        {
+          LOG(INFO) << "shader attribute: " << _ipt_name.first << " is declared in shader file but not in c++ class";
+          assert(false);
+        }
+      }
+
+      if (not_found)
+      {
+        LOG(INFO) << "could not find required input in shader file: " << not_found_name << " in shader: " << vertex_name;
+        assert(false);
+      }
+
+      if (wrong_type)
+      {
+        LOG(INFO) << wrong_type_message << " in shader: " << vertex_name;
+        assert(false);
+      }
+    }
+
+    {
+      const GLuint program = internal_shader.id;
+      GLint num_outputs;
+
+      glGetProgramInterfaceiv(program, GL_PROGRAM_OUTPUT, GL_ACTIVE_RESOURCES, &num_outputs);
+      std::array properties{(GLenum)GL_NAME_LENGTH, (GLenum)GL_TYPE};
+
+      std::vector<std::pair<std::string, usize>> found_outputs{};
+      found_outputs.reserve(num_outputs);
+
+      for (i32 i = 0; i < num_outputs; ++i)
+      {
+        GLint results[3];
+        glGetProgramResourceiv(program, GL_PROGRAM_OUTPUT, i, properties.size(), properties.data(), properties.size(), nullptr, results);
+        std::vector<char> name_buffer(results[0]);
+        glGetProgramResourceName(program, GL_PROGRAM_OUTPUT, i, name_buffer.size(), nullptr, name_buffer.data());
+        std::string name(name_buffer.begin(), name_buffer.end() - 1);
+        GLenum type = results[1];
+        found_outputs.push_back({name, type});
+      }
+
+      bool output_not_found = false, output_wrong_type = false;
+      std::string_view output_not_found_name;
+      std::string output_wrong_type_message;
+
+      /*
+      check if the c++ code requires outputs that are not present in the compiled shader
+      */
+      for_constexpr<0, std::tuple_size_v<decltype(shader_outputs)>, 1>(
+          [&](auto ite)
+          {
+            if (output_not_found || output_wrong_type)
+            {
+              return;
+            }
+
+            bool current_found = false, current_right_type = false;
+            GLenum _wrong_type               = 0;
+            constexpr static auto shader_out = std::get<ite>(shader_outputs);
+
+            for (const auto &_out_name : found_outputs)
+            {
+              if (shader_out.name == _out_name.first)
+              {
+                current_found = true;
+                if (glsl_type_translation<typename decltype(shader_out)::type>::gl_type == _out_name.second)
+                {
+                  current_right_type = true;
+                }
+                else
+                {
+                  _wrong_type = _out_name.second;
+                }
+              }
+            }
+            if (!current_found)
+            {
+              output_not_found_name = shader_out.name;
+              output_not_found      = true;
+            }
+
+            if (!current_right_type)
+            {
+              output_wrong_type_message =
+                  "output expteced type: " + std::string(glsl_type_name_map<typename decltype(shader_out)::type>::value) +
+                  " got: " + std::string(glenum_type_to_strview(_wrong_type));
+              output_wrong_type = true;
+            }
+          });
+
+      /*
+       check if there are outputs declared and used in the shader file that the c++ code doesnt know about
+       */
+      for (const auto &_out_name : found_outputs)
+      {
+        bool current_needed = false;
+        for_constexpr<0, std::tuple_size_v<decltype(shader_outputs)>, 1>(
+            [&](auto ite)
+            {
+              constexpr static auto shader_out = std::get<ite>(shader_outputs);
+              if (shader_out.name == _out_name.first)
+              {
+                current_needed = true;
+              }
+            });
+
+        if (!current_needed)
+        {
+          LOG(INFO) << "shader output: " << _out_name.first << " is declared in shader file but not in c++ class";
+          assert(false);
+        }
+      }
+
+      if (output_not_found)
+      {
+        LOG(INFO) << "could not find required output in shader file: " << output_not_found_name << " in shader: " << fragment_name;
+        assert(false);
+      }
+
+      if (output_wrong_type)
+      {
+        LOG(INFO) << output_wrong_type_message << " in shader: " << fragment_name;
+        assert(false);
+      }
+    }
+
+    {
+      std::vector<std::pair<std::string, GLuint>> uniforms;
+      GLint numUniforms = 0;
+      glGetProgramiv(internal_shader.id, GL_ACTIVE_UNIFORMS, &numUniforms);
+      for (GLint i = 0; i < numUniforms; ++i)
+      {
+        char name[256];
+        GLsizei length = 0;
+        GLint size     = 0;
+        GLenum type    = 0;
+        glGetActiveUniform(internal_shader.id, i, sizeof(name), &length, &size, &type, name);
+        uniforms.emplace_back(std::string(name, length), type);
+      }
+
+      bool uniform_not_found = false, uniform_wrong_type = false;
+      std::string_view uniform_not_found_name;
+      std::string uniform_wrong_type_message;
+      /*
+      check if the c++ code requires uniforms that are not present in the compiled shader
+      */
+      for_constexpr<0, std::tuple_size_v<decltype(shader_uniforms)>, 1>(
+          [&](auto ite)
+          {
+            if (uniform_not_found || uniform_wrong_type)
+            {
+              return;
+            }
+
+            bool current_found = false, current_right_type = false;
+            GLenum _wrong_type                   = 0;
+            constexpr static auto shader_uniform = std::get<ite>(shader_uniforms);
+
+            for (const auto &_found_uniform : uniforms)
+            {
+              if (shader_uniform.name == _found_uniform.first)
+              {
+                current_found = true;
+                if (glsl_type_translation<typename decltype(shader_uniform)::type>::gl_type == _found_uniform.second)
+                {
+                  current_right_type = true;
+                }
+                else
+                {
+                  _wrong_type = _found_uniform.second;
+                }
+              }
+            }
+            if (!current_found)
+            {
+              uniform_not_found_name = shader_uniform.name;
+              uniform_not_found      = true;
+            }
+
+            if (!current_right_type)
+            {
+              uniform_wrong_type_message =
+                  "uniform expteced type: " + std::string(glsl_type_name_map<typename decltype(shader_uniform)::type>::value) +
+                  " got: " + std::string(glenum_type_to_strview(_wrong_type));
+              uniform_wrong_type = true;
+            }
+          });
+
+      /*
+      check if there are uniforms declared and used in the shader file that the c++ code doesnt know about
+      */
+      for (const auto &_found_uniform : uniforms)
+      {
+        bool current_needed = false;
+        for_constexpr<0, std::tuple_size_v<decltype(shader_uniforms)>, 1>(
+            [&](auto ite)
+            {
+              constexpr static auto shader_uniform = std::get<ite>(shader_uniforms);
+              if (shader_uniform.name == _found_uniform.first)
+              {
+                current_needed = true;
+              }
+            });
+
+        if (!current_needed)
+        {
+          LOG(INFO) << "shader uniform: " << _found_uniform.first << " is declared in shader file but not in c++ class";
+          assert(false);
+        }
+      }
+
+      if (uniform_not_found)
+      {
+        LOG(INFO) << "could not find required output in shader file: " << uniform_not_found_name << " in shader: " << fragment_name;
+        assert(false);
+      }
+
+      if (uniform_wrong_type)
+      {
+        LOG(INFO) << uniform_wrong_type_message << " in shader: " << fragment_name;
+        assert(false);
+      }
     }
 
     initialized = true;
-
     return true;
   }
 
@@ -342,3 +685,4 @@ public:
 };
 
 } // namespace renderer::core
+// 500 lines yay!

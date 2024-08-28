@@ -73,8 +73,6 @@ struct ground_chunk
   u0
   regenerate(debug_menu_t& dmenu)
   {
-    puts("regenerate called");
-
     test_foliage_model.set_instance_count(0);
 
     foliage_points.clear();

@@ -437,7 +437,7 @@ renderer::core::detail::internal_shader::load_from_path(std::string_view _vertex
     glDeleteShader(tess_eval);
   }
 
-  LOG(INFO) << "[shader] : shader " << debug_name << " loaded successfully";
+  LOG(INFO) << "[shader] : shader " << debug_name << " compiled successfully";
   return true;
 }
 //
