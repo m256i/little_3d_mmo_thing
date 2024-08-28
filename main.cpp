@@ -136,9 +136,7 @@ draw_tree_recursive(const tree_node_t& branch)
 }
 
 /*
-
-TODO: combine drawbuffers of tris and quads into one and use only one Drawcall
-
+TODO: combine drawbuffers of tris and quads into one and use only one drawcall
 */
 
 // clang-format off
@@ -150,13 +148,10 @@ renderer::core::static_drawbuffer<renderer::core::drawbuffer_type::tris,
 renderer::core::shader<"world_mesh", "../shaders/world_mesh",
   renderer::core::shader_input<"position", glm::vec3>,
   renderer::core::shader_input<"normal", glm::vec3>,
-
-  renderer::core::texture2d_shader_input<"texture_diffure1">,
-
+  
   renderer::core::shader_uniform<"model", glm::mat4>,
   renderer::core::shader_uniform<"view", glm::mat4>,
   renderer::core::shader_uniform<"projection", glm::mat4>,
-  renderer::core::shader_output<"FragColor", glm::vec4>
   renderer::core::shader_output<"FragColor", glm::vec4>
 > shader_thing;
 // clang-format on
