@@ -146,12 +146,25 @@ renderer::core::static_drawbuffer<renderer::core::drawbuffer_type::tris,
 > buffer;
 
 renderer::core::shader<"world_mesh", "../shaders/world_mesh",
+  /*
+  shader vertex buf inputs
+  */
   renderer::core::shader_input<"position", glm::vec3>,
   renderer::core::shader_input<"normal", glm::vec3>,
-  
+  /*
+  shader texture inputs
+  */
+  renderer::core::texture2d_shader_input<"texture_diffuse1">,
+  renderer::core::texture2d_shader_input<"texture_diffuse2">,
+  /*
+  shader uniform inputs (set when calling shader.bind(...))
+  */
   renderer::core::shader_uniform<"model", glm::mat4>,
   renderer::core::shader_uniform<"view", glm::mat4>,
   renderer::core::shader_uniform<"projection", glm::mat4>,
+  /*
+  shader outputs
+  */
   renderer::core::shader_output<"FragColor", glm::vec4>
 > shader_thing;
 // clang-format on
@@ -181,6 +194,9 @@ main(i32 argc, char** argv) -> i32
   // ground_mesh_chunk_t plane{};
   // ground_mesh_system world{};
   world_gen::ground_chunk ground;
+
+  shader_thing.get_uniform<"model", glm::mat4>()[0][0] = 69;
+  std::cout << "ASDHASDH: " << shader_thing.get_uniform<"model", glm::mat4>()[0][0] << "\n";
 
   static_world_model_t skybox3d_model{"skybox"};
 

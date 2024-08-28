@@ -56,6 +56,10 @@ glenum_type_to_strview(GLenum _enum)
   {
     return {"mat4"};
   }
+  case GL_SAMPLER_2D:
+  {
+    return {"sampler2d"};
+  }
   default:
   {
     break;

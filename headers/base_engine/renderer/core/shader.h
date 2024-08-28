@@ -11,6 +11,71 @@
 namespace renderer::core
 {
 
+template <ct_string TName, typename TType>
+struct shader_uniform_handle
+{
+  constexpr static std::string_view name = TName.to_view();
+  using type                             = TType;
+  type object{};
+};
+
+/*
+TODO: use custom arena allocator for optional here for less cache misses
+*/
+template <typename... TUniforms>
+struct shader_uniform_pack
+{
+  template <ct_string TName, typename TType>
+  std::optional<std::reference_wrapper<TType>>
+  get()
+  {
+    TType *ptr = nullptr;
+    for_constexpr<0, sizeof...(TUniforms), 1>(
+        [&](auto ite)
+        {
+          auto &curr = std::get<ite>(uniforms);
+          if (curr.name == TName.to_view() && std::is_same_v<TType, typename std::remove_cvref_t<decltype(curr)>::type>)
+          {
+            ptr = std::addressof(curr.object);
+          }
+        });
+    if (ptr != nullptr)
+    {
+      return std::make_optional(std::ref(*ptr));
+    }
+    else
+    {
+      return std::nullopt;
+    }
+  }
+
+  template <ct_string TName, typename TType>
+  std::optional<std::reference_wrapper<const TType>>
+  get() const
+  {
+    const TType *ptr = nullptr;
+    for_constexpr<0, sizeof...(TUniforms), 1>(
+        [&](auto ite)
+        {
+          auto &curr = std::get<ite>(uniforms);
+          if (curr.name == TName.to_view() && std::is_same_v<TType, typename std::remove_cvref_t<decltype(curr)>::type>)
+          {
+            ptr = std::addressof(curr.object);
+          }
+        });
+    if (ptr != nullptr)
+    {
+      return std::make_optional(std::ref(*ptr));
+    }
+    else
+    {
+      return std::nullopt;
+    }
+  }
+
+  std::tuple<TUniforms...> uniforms{};
+};
+
 namespace detail
 {
 
@@ -274,16 +339,63 @@ private:
     return out;
   }
 
+  template <typename T>
+  struct to_shader_uniform_handle;
+
+  template <ct_string TName, typename TType>
+  struct to_shader_uniform_handle<shader_uniform<TName, TType>>
+  {
+    using type = shader_uniform_handle<TName, TType>;
+  };
+
+  // Helper to convert a tuple of shader_uniforms into a shader_uniform_pack
+  template <typename Tuple, std::size_t... I>
+  static constexpr auto
+  make_shader_uniform_pack_impl(Tuple &&tuple, std::index_sequence<I...>)
+  {
+    return shader_uniform_pack<typename to_shader_uniform_handle<std::tuple_element_t<I, Tuple>>::type...>{};
+  }
+
+  template <typename Tuple>
+  static constexpr auto
+  make_shader_uniform_pack(Tuple &&tuple)
+  {
+    constexpr std::size_t N = std::tuple_size_v<std::decay_t<Tuple>>;
+    return make_shader_uniform_pack_impl(std::forward<Tuple>(tuple), std::make_index_sequence<N>{});
+  }
+
 public:
   static constexpr auto shader_inputs  = filter_types_t<is_shader_input, TShaderInOutNodes...>{};
   static constexpr auto shader_outputs = filter_types_t<is_shader_output, TShaderInOutNodes...>{};
   static constexpr auto shader_uniforms =
       std::tuple_cat(filter_types_t<is_shader_uniform, TShaderInOutNodes...>{}, filter_types_t<is_texture_input, TShaderInOutNodes...>{});
 
+  static constexpr auto texture_inputs = filter_types_t<is_texture_input, TShaderInOutNodes...>{};
+
   detail::internal_shader internal_shader{TShaderName.to_view()};
+
+  decltype(make_shader_uniform_pack(filter_types_t<is_shader_uniform, TShaderInOutNodes...>{})) uniforms =
+      make_shader_uniform_pack(filter_types_t<is_shader_uniform, TShaderInOutNodes...>{});
 
   bool has_vertex = false, has_fragment = false, has_tesc = false, has_tese = false;
   bool initialized = false;
+
+  template <ct_string TName, typename TType>
+  decltype(auto)
+  get_uniform()
+  {
+    auto value = uniforms.template get<TName, TType>();
+    if (value.has_value())
+    {
+      return (value->get());
+    }
+    else
+    {
+      LOG(INFO) << "tried to acces uniform" << TName.to_view() << "which doesn't exist!";
+      assert(false);
+      std::unreachable();
+    }
+  }
 
   /*
     @TODO: code cleanup some day later. this works but its really ugly
@@ -351,32 +463,17 @@ public:
       return false;
     }
 
+    static const auto check_lambda =
+        [&](const std::vector<std::pair<std::string, u32>> &_name_type_list, auto _required_tuple, std::string_view object_type)
     {
-      char name[129];
-      i32 name_length = 0;
-
-      i32 io_count{};
-      glGetProgramiv(internal_shader.id, GL_ACTIVE_ATTRIBUTES, &io_count);
-
-      std::vector<std::pair<std::string, GLenum>> found_inputs{};
-      found_inputs.reserve(io_count);
-
-      for (i32 i = 0; i < io_count; i++)
-      {
-        i32 size;
-        GLenum type;
-        glGetActiveAttrib(internal_shader.id, i, 256, &name_length, &size, &type, name);
-        found_inputs.push_back({std::string(name), type});
-      }
-
       bool not_found = false, wrong_type = false;
       std::string_view not_found_name;
       std::string wrong_type_message;
 
       /*
-      check if the c++ code requires inputs that are not present in the compiled shader
+      check if the c++ code requires attributes that are not present in the compiled shader
       */
-      for_constexpr<0, std::tuple_size_v<decltype(shader_inputs)>, 1>(
+      for_constexpr<0, std::tuple_size_v<decltype(_required_tuple)>, 1>(
           [&](auto ite)
           {
             if (not_found || wrong_type)
@@ -386,19 +483,26 @@ public:
 
             bool current_found = false, current_right_type = false;
             GLenum _wrong_type               = 0;
-            constexpr static auto shader_ipt = std::get<ite>(shader_inputs);
+            constexpr static auto shader_ipt = std::get<ite>(_required_tuple);
 
-            if constexpr (std::is_same_v<typename decltype(shader_ipt)::type, detail::impl_unique_shader_tag_type>)
+            for (const auto &_ipt_name : _name_type_list)
             {
-              return;
-            }
-            else
-            {
-              for (const auto &_ipt_name : found_inputs)
+              if (shader_ipt.name == _ipt_name.first)
               {
-                if (shader_ipt.name == _ipt_name.first)
+                current_found = true;
+                if constexpr (std::is_same_v<typename decltype(shader_ipt)::type, detail::impl_unique_shader_tag_type>)
                 {
-                  current_found = true;
+                  if (_ipt_name.second == GL_SAMPLER_2D)
+                  {
+                    current_right_type = true;
+                  }
+                  else
+                  {
+                    _wrong_type = _ipt_name.second;
+                  }
+                }
+                else
+                {
                   if (glsl_type_translation<typename decltype(shader_ipt)::type>::gl_type == _ipt_name.second)
                   {
                     current_right_type = true;
@@ -409,43 +513,44 @@ public:
                   }
                 }
               }
+            }
 
-              if (!current_found)
-              {
-                not_found_name = shader_ipt.name;
-                not_found      = true;
-              }
+            if (!current_found)
+            {
+              not_found_name = shader_ipt.name;
+              not_found      = true;
+            }
 
-              if (!current_right_type)
+            if (!current_right_type)
+            {
+              if constexpr (std::is_same_v<typename decltype(shader_ipt)::type, detail::impl_unique_shader_tag_type>)
               {
                 wrong_type_message =
-                    "attribute expteced type: " + std::string(glsl_type_name_map<typename decltype(shader_ipt)::type>::value) +
-                    " got: " + std::string(glenum_type_to_strview(_wrong_type));
-                wrong_type = true;
+                    std::string(object_type.data()) + " expteced type sampler2d, got: " + std::string(glenum_type_to_strview(_wrong_type));
               }
+              else
+              {
+                wrong_type_message = std::string(object_type.data()) +
+                                     " expteced type: " + std::string(glsl_type_name_map<typename decltype(shader_ipt)::type>::value) +
+                                     " got: " + std::string(glenum_type_to_strview(_wrong_type));
+              }
+              wrong_type = true;
             }
           });
 
       /*
-       check if there are inputs declared and used in the shader file that the c++ code doesnt know about
+       check if there are attributes declared and used in the shader file that the c++ code doesnt know about
        */
-      for (const auto &_ipt_name : found_inputs)
+      for (const auto &_ipt_name : _name_type_list)
       {
         bool current_needed = false;
-        for_constexpr<0, std::tuple_size_v<decltype(shader_inputs)>, 1>(
+        for_constexpr<0, std::tuple_size_v<decltype(_required_tuple)>, 1>(
             [&](auto ite)
             {
-              constexpr static auto shader_ipt = std::get<ite>(shader_inputs);
-              if constexpr (std::is_same_v<typename decltype(shader_ipt)::type, detail::impl_unique_shader_tag_type>)
+              constexpr static auto shader_ipt = std::get<ite>(_required_tuple);
+              if (shader_ipt.name == _ipt_name.first)
               {
-                return;
-              }
-              else
-              {
-                if (shader_ipt.name == _ipt_name.first)
-                {
-                  current_needed = true;
-                }
+                current_needed = true;
               }
             });
 
@@ -455,20 +560,38 @@ public:
           assert(false);
         }
       }
-
       if (not_found)
       {
-        LOG(INFO) << "could not find required input in shader file: " << not_found_name << " in shader: " << vertex_name;
+        LOG(INFO) << "could not find required " << object_type << " in shader file: " << not_found_name << " in shader: " << vertex_name;
         assert(false);
       }
-
       if (wrong_type)
       {
         LOG(INFO) << wrong_type_message << " in shader: " << vertex_name;
         assert(false);
       }
-    }
+    };
 
+    static const auto input_generator = [&]()
+    {
+      char name[129];
+      i32 name_length = 0, io_count{};
+      glGetProgramiv(internal_shader.id, GL_ACTIVE_ATTRIBUTES, &io_count);
+
+      std::vector<std::pair<std::string, u32>> found_inputs{};
+      found_inputs.reserve(io_count);
+
+      for (i32 i = 0; i < io_count; i++)
+      {
+        i32 size;
+        GLenum type;
+        glGetActiveAttrib(internal_shader.id, i, sizeof(name), &name_length, &size, &type, name);
+        found_inputs.push_back({std::string(name), type});
+      }
+      return found_inputs;
+    };
+
+    static const auto output_generator = [&]()
     {
       const GLuint program = internal_shader.id;
       GLint num_outputs;
@@ -476,7 +599,7 @@ public:
       glGetProgramInterfaceiv(program, GL_PROGRAM_OUTPUT, GL_ACTIVE_RESOURCES, &num_outputs);
       std::array properties{(GLenum)GL_NAME_LENGTH, (GLenum)GL_TYPE};
 
-      std::vector<std::pair<std::string, usize>> found_outputs{};
+      std::vector<std::pair<std::string, u32>> found_outputs{};
       found_outputs.reserve(num_outputs);
 
       for (i32 i = 0; i < num_outputs; ++i)
@@ -489,94 +612,12 @@ public:
         GLenum type = results[1];
         found_outputs.push_back({name, type});
       }
+      return found_outputs;
+    };
 
-      bool output_not_found = false, output_wrong_type = false;
-      std::string_view output_not_found_name;
-      std::string output_wrong_type_message;
-
-      /*
-      check if the c++ code requires outputs that are not present in the compiled shader
-      */
-      for_constexpr<0, std::tuple_size_v<decltype(shader_outputs)>, 1>(
-          [&](auto ite)
-          {
-            if (output_not_found || output_wrong_type)
-            {
-              return;
-            }
-
-            bool current_found = false, current_right_type = false;
-            GLenum _wrong_type               = 0;
-            constexpr static auto shader_out = std::get<ite>(shader_outputs);
-
-            for (const auto &_out_name : found_outputs)
-            {
-              if (shader_out.name == _out_name.first)
-              {
-                current_found = true;
-                if (glsl_type_translation<typename decltype(shader_out)::type>::gl_type == _out_name.second)
-                {
-                  current_right_type = true;
-                }
-                else
-                {
-                  _wrong_type = _out_name.second;
-                }
-              }
-            }
-            if (!current_found)
-            {
-              output_not_found_name = shader_out.name;
-              output_not_found      = true;
-            }
-
-            if (!current_right_type)
-            {
-              output_wrong_type_message =
-                  "output expteced type: " + std::string(glsl_type_name_map<typename decltype(shader_out)::type>::value) +
-                  " got: " + std::string(glenum_type_to_strview(_wrong_type));
-              output_wrong_type = true;
-            }
-          });
-
-      /*
-       check if there are outputs declared and used in the shader file that the c++ code doesnt know about
-       */
-      for (const auto &_out_name : found_outputs)
-      {
-        bool current_needed = false;
-        for_constexpr<0, std::tuple_size_v<decltype(shader_outputs)>, 1>(
-            [&](auto ite)
-            {
-              constexpr static auto shader_out = std::get<ite>(shader_outputs);
-              if (shader_out.name == _out_name.first)
-              {
-                current_needed = true;
-              }
-            });
-
-        if (!current_needed)
-        {
-          LOG(INFO) << "shader output: " << _out_name.first << " is declared in shader file but not in c++ class";
-          assert(false);
-        }
-      }
-
-      if (output_not_found)
-      {
-        LOG(INFO) << "could not find required output in shader file: " << output_not_found_name << " in shader: " << fragment_name;
-        assert(false);
-      }
-
-      if (output_wrong_type)
-      {
-        LOG(INFO) << output_wrong_type_message << " in shader: " << fragment_name;
-        assert(false);
-      }
-    }
-
+    static const auto uniform_generator = [&]()
     {
-      std::vector<std::pair<std::string, GLuint>> uniforms;
+      std::vector<std::pair<std::string, u32>> uniforms;
       GLint numUniforms = 0;
       glGetProgramiv(internal_shader.id, GL_ACTIVE_UNIFORMS, &numUniforms);
       for (GLint i = 0; i < numUniforms; ++i)
@@ -588,90 +629,12 @@ public:
         glGetActiveUniform(internal_shader.id, i, sizeof(name), &length, &size, &type, name);
         uniforms.emplace_back(std::string(name, length), type);
       }
+      return uniforms;
+    };
 
-      bool uniform_not_found = false, uniform_wrong_type = false;
-      std::string_view uniform_not_found_name;
-      std::string uniform_wrong_type_message;
-      /*
-      check if the c++ code requires uniforms that are not present in the compiled shader
-      */
-      for_constexpr<0, std::tuple_size_v<decltype(shader_uniforms)>, 1>(
-          [&](auto ite)
-          {
-            if (uniform_not_found || uniform_wrong_type)
-            {
-              return;
-            }
-
-            bool current_found = false, current_right_type = false;
-            GLenum _wrong_type                   = 0;
-            constexpr static auto shader_uniform = std::get<ite>(shader_uniforms);
-
-            for (const auto &_found_uniform : uniforms)
-            {
-              if (shader_uniform.name == _found_uniform.first)
-              {
-                current_found = true;
-                if (glsl_type_translation<typename decltype(shader_uniform)::type>::gl_type == _found_uniform.second)
-                {
-                  current_right_type = true;
-                }
-                else
-                {
-                  _wrong_type = _found_uniform.second;
-                }
-              }
-            }
-            if (!current_found)
-            {
-              uniform_not_found_name = shader_uniform.name;
-              uniform_not_found      = true;
-            }
-
-            if (!current_right_type)
-            {
-              uniform_wrong_type_message =
-                  "uniform expteced type: " + std::string(glsl_type_name_map<typename decltype(shader_uniform)::type>::value) +
-                  " got: " + std::string(glenum_type_to_strview(_wrong_type));
-              uniform_wrong_type = true;
-            }
-          });
-
-      /*
-      check if there are uniforms declared and used in the shader file that the c++ code doesnt know about
-      */
-      for (const auto &_found_uniform : uniforms)
-      {
-        bool current_needed = false;
-        for_constexpr<0, std::tuple_size_v<decltype(shader_uniforms)>, 1>(
-            [&](auto ite)
-            {
-              constexpr static auto shader_uniform = std::get<ite>(shader_uniforms);
-              if (shader_uniform.name == _found_uniform.first)
-              {
-                current_needed = true;
-              }
-            });
-
-        if (!current_needed)
-        {
-          LOG(INFO) << "shader uniform: " << _found_uniform.first << " is declared in shader file but not in c++ class";
-          assert(false);
-        }
-      }
-
-      if (uniform_not_found)
-      {
-        LOG(INFO) << "could not find required output in shader file: " << uniform_not_found_name << " in shader: " << fragment_name;
-        assert(false);
-      }
-
-      if (uniform_wrong_type)
-      {
-        LOG(INFO) << uniform_wrong_type_message << " in shader: " << fragment_name;
-        assert(false);
-      }
-    }
+    check_lambda(input_generator(), shader_inputs, "input");
+    check_lambda(output_generator(), shader_outputs, "output");
+    check_lambda(uniform_generator(), shader_uniforms, "uniform");
 
     initialized = true;
     return true;
