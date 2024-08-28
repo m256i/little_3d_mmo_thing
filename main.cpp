@@ -140,10 +140,12 @@ TODO: combine drawbuffers of tris and quads into one and use only one drawcall
 */
 
 // clang-format off
-renderer::core::static_drawbuffer<renderer::core::drawbuffer_type::tris,
-  renderer::core::drawbuf_attrib<"position", glm::vec3>,
-  renderer::core::drawbuf_attrib<"normal", float, float ,float>
+renderer::core::static_drawbuffer<
+  renderer::core::drawbuffer_type::tris,
+  renderer::core::drawbuf_attrib<"position", glm::vec4>,
+  renderer::core::drawbuf_attrib<"normal", glm::vec3>
 > buffer;
+
 
 renderer::core::shader<"world_mesh", "../shaders/world_mesh",
   /*
@@ -167,19 +169,30 @@ renderer::core::shader<"world_mesh", "../shaders/world_mesh",
   */
   renderer::core::shader_output<"FragColor", glm::vec4>
 > shader_thing;
+
+
+
+renderer::core::frame_buffer<
+  renderer::core::frame_buffer_options<
+    renderer::core::frame_buffer_option::has_depth_texture
+  >{},
+  renderer::core::base_texture2d::texture_format::rgba
+> framebuftest;
+
 // clang-format on
 
 INITIALIZE_EASYLOGGINGPP
+
+auto pipeline = buffer > (shader_thing > framebuftest.target());
 
 auto
 main(i32 argc, char** argv) -> i32
 {
   START_EASYLOGGINGPP(argc, argv);
 
-  LOG(DEBUG) << buffer.get_name_index<"position">();
-  LOG(DEBUG) << buffer.get_name_index<"normal">();
-
-  LOG(DEBUG) << buffer.get_attribte_offset<"normal">();
+  LOG(DEBUG) << buffer.template get_name_index<"position">();
+  LOG(DEBUG) << buffer.template get_name_index<"normal">();
+  LOG(DEBUG) << buffer.template get_attribte_offset<"normal">();
 
   std::unordered_map<u32, debug_bbox_t> debug_boxes{};
   debug_menu_t debug_menu{};
@@ -204,10 +217,6 @@ main(i32 argc, char** argv) -> i32
 
   usize pp_pass1;
 
-  renderer::core::frame_buffer<renderer::core::frame_buffer_options<renderer::core::frame_buffer_option::has_depth_texture>{},
-                               {renderer::core::base_texture2d::texture_format::rgba}>
-      drawbuftest;
-
   return create_window("WoW Clone :D", false)
       .register_callback(glfwSetCursorPosCallback, mouse_callback)
       .init(
@@ -218,17 +227,24 @@ main(i32 argc, char** argv) -> i32
             // buffer.set_buffers(vertex_buffer.data(), vertex_buffer.size() * sizeof(float), idd_buffer);
             // buffer.buffer_to_gpu();
 
-            if (drawbuftest.initialize(1920, 1080))
+            if (framebuftest.initialize(1920, 1080))
+            {
+              std::cout << "framebuffer test success!\n";
+            }
+
+            if (buffer.buffer_to_gpu())
             {
               std::cout << "drawbuffer test success!\n";
             }
 
-            LOG(DEBUG) << std::tuple_size_v<decltype(shader_thing.shader_inputs)>;
-            LOG(DEBUG) << std::tuple_size_v<decltype(shader_thing.shader_outputs)>;
+            if (shader_thing.setup())
+            {
+              std::cout << "shader test success!\n";
+            }
 
-            LOG(DEBUG) << std::get<0>(shader_thing.shader_inputs).name;
+            pipeline.evaluate();
 
-            shader_thing.setup();
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
             debug_menu.init_menu(_window);
 
@@ -278,7 +294,7 @@ void main()
             // plane.initialize(0);
 
             // world.init(debug_menu);
-            ground.init(10000, debug_menu);
+            ground.init(10'000, debug_menu);
 
             game_renderer.model_renderer.add_static_world_model("tree1", "../data/trees/trees/westfalltree03.obj");
 

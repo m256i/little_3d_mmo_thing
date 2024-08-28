@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gl_type_translations.h"
+#include "pipeline.h"
 #include <common.h>
 #include <glm/glm.hpp>
 #include <glad/glad.h>
@@ -395,6 +396,24 @@ public:
       assert(false);
       std::unreachable();
     }
+  }
+
+  template <usize TColorAttachementCount>
+  shader_pipeline_stage<decltype(shader_inputs)>
+  operator>(framebuffer_pipeline_stage<TColorAttachementCount> _framebuffer)
+  {
+    static_assert(!(TColorAttachementCount > std::tuple_size_v<decltype(shader_outputs)>),
+                  "framebuffer target has more color attachements than shader has outputs!");
+    static_assert(!(TColorAttachementCount < std::tuple_size_v<decltype(shader_outputs)>),
+                  "framebuffer target has less color attachements than shader has outputs!");
+
+    _framebuffer.pipeline_stage.push_back(
+        [&]()
+        {
+          puts("binding shader!");
+          bind();
+        });
+    return shader_pipeline_stage<decltype(shader_inputs)>{std::move(_framebuffer.pipeline_stage)};
   }
 
   /*

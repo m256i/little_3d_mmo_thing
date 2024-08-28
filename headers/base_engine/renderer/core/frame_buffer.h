@@ -10,6 +10,7 @@
 #include <cassert>
 #include "base_engine/utils/zip.h"
 #include "base_texture.h"
+#include "pipeline.h"
 
 template <typename TType>
 struct wstack : std::stack<TType>
@@ -170,7 +171,7 @@ struct color_attachement
   base_texture2d::texture_format format;
 };
 
-template <frame_buffer_options TOptions, color_attachement... TColorAttachments>
+template <frame_buffer_options TOptions, base_texture2d::texture_format... TColorAttachments>
 struct frame_buffer
     : std::conditional_t<TOptions.has_depth, detail::depth_texture_extension, detail::empty_depth_texture_extension>,
       std::conditional_t<TOptions.has_depth_stencil, detail::depth_stencil_texture_extension, detail::empty_depth_stencil_texture_extension>
@@ -182,6 +183,26 @@ struct frame_buffer
 
   u32 handle{};
   u32 screen_w, screen_h;
+
+  operator framebuffer_pipeline_stage<sizeof...(TColorAttachments)>()
+  {
+    std::stack<std::function<void()>> out;
+    out.push([&]() { bind(); });
+    return std::move(framebuffer_pipeline_stage<sizeof...(TColorAttachments)>{.pipeline_stage{out}});
+  }
+
+  framebuffer_pipeline_stage<sizeof...(TColorAttachments)>
+  target()
+  {
+    std::vector<std::function<void()>> out;
+    out.push_back(
+        [&]()
+        {
+          puts("binding framebuffer object!");
+          bind();
+        });
+    return std::move(framebuffer_pipeline_stage<sizeof...(TColorAttachments)>{.pipeline_stage{out}});
+  }
 
   bool initialized = false;
 
@@ -202,7 +223,7 @@ struct frame_buffer
     for_constexpr<0, sizeof...(TColorAttachments), 1>(
         [&](auto ite)
         {
-          const auto current_attachment_type = std::get<ite>(color_attachments).format;
+          const auto current_attachment_type = std::get<ite>(color_attachments);
           color_attachement_tex_handles.push_back({});
           auto& curr_tex = color_attachement_tex_handles.back();
           curr_tex.initialize(_screen_w, _screen_h, current_attachment_type);

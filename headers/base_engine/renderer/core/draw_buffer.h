@@ -4,7 +4,8 @@
 #include <glm/glm.hpp>
 #include <glad/glad.h>
 #include <cassert>
-#include <span>
+#include "pipeline.h"
+#include "shader.h"
 
 #include "gl_type_translations.h"
 
@@ -75,14 +76,65 @@ public:
 
   /* used to see which drawbuffers can be combined later */
   constexpr static auto drawbuffer_type = TDrawBufType;
-
   constexpr static std::tuple<TAttributes...> attribute_row;
+
   std::vector<u8> vertex_data_cpu_buffer{};
   std::vector<i32> cpu_index_buffer{};
 
   bool initialized = false;
 
   u32 vao_handle{}, vbo_handle{}, ebo_handle{};
+
+  template <typename TInAttibuteTuple>
+  static consteval bool
+  shader_matches_drawbuf()
+  {
+    bool found_faulty = false;
+
+    for_constexpr<0, sizeof...(TAttributes), 1>(
+        [&](auto ite)
+        {
+          if (found_faulty)
+          {
+            return;
+          }
+
+          constexpr auto vertex_attrib = std::get<ite>(attribute_row);
+          constexpr auto shader_ipt    = std::get<ite>(TInAttibuteTuple{});
+
+          if (shader_ipt.name != vertex_attrib.attribute_name)
+          {
+            found_faulty = true;
+          }
+          if (!std::is_same_v<typename decltype(shader_ipt)::type, typename decltype(vertex_attrib)::attribute_common_type>)
+          {
+            found_faulty = true;
+          }
+        });
+
+    return found_faulty;
+  }
+
+  template <typename TInAttibuteTuple>
+  vertex_buffer_pipeline_stage
+  operator>(shader_pipeline_stage<TInAttibuteTuple> _shader)
+  {
+    static_assert(std::tuple_size_v<TInAttibuteTuple> == sizeof...(TAttributes),
+                  "mismatch of vertex buffer attributes and shader input attributes");
+
+    /*
+    test attributes against shader inputs
+    */
+    static_assert(!shader_matches_drawbuf<TInAttibuteTuple>(), "mismatch in vertex attributes and shader inputs!");
+
+    _shader.pipeline_stage.push_back(
+        [&]()
+        {
+          puts("binding vertex buffer");
+          bind_buffers();
+        });
+    return {std::move(_shader.pipeline_stage)};
+  }
 
   bool
   buffer_to_gpu()
@@ -213,6 +265,12 @@ public:
     {
       return out;
     }
+  }
+
+  inline u0
+  bind_buffers()
+  {
+    glBindVertexArray(vao_handle);
   }
 };
 } // namespace renderer::core
