@@ -91,6 +91,11 @@ public:
   {
     bool found_faulty = false;
 
+    /*
+    TODO: make it so that when the drawbuffer row is for example <float, float, float> and the shader exptects a vec3 it still
+    compiles/works
+    */
+
     for_constexpr<0, sizeof...(TAttributes), 1>(
         [&](auto ite)
         {

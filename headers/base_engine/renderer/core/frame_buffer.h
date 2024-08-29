@@ -8,7 +8,6 @@
 
 #include <stack>
 #include <cassert>
-#include "base_engine/utils/zip.h"
 #include "base_texture.h"
 #include "pipeline.h"
 

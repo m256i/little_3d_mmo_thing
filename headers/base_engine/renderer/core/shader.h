@@ -319,7 +319,6 @@ private:
                                     typename filter_types<TPredicate, Ts...>::type>;
   };
 
-  // Convenience alias to get the filtered tuple
   template <template <typename> class TPredicate, typename... Ts>
   using filter_types_t = typename filter_types<TPredicate, Ts...>::type;
 
@@ -349,7 +348,6 @@ private:
     using type = shader_uniform_handle<TName, TType>;
   };
 
-  // Helper to convert a tuple of shader_uniforms into a shader_uniform_pack
   template <typename Tuple, std::size_t... I>
   static constexpr auto
   make_shader_uniform_pack_impl(Tuple &&tuple, std::index_sequence<I...>)
