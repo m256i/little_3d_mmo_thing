@@ -214,10 +214,11 @@ main(i32 argc, char** argv) -> i32
 
   renderer::core::base_texture2d tex1, tex2;
 
-  {
-    using namespace renderer::core;
-    auto pipeline = combine{buffer | tex1 | tex2} > shader_thing > framebuftest;
-  }
+  puts("bruder was");
+
+  auto pipeline = renderer::core::combine{buffer | tex1 | tex2} > shader_thing > framebuftest;
+
+  puts("what");
 
   static_world_model_t skybox3d_model{"skybox"};
 
@@ -235,22 +236,25 @@ main(i32 argc, char** argv) -> i32
             // buffer.set_buffers(vertex_buffer.data(), vertex_buffer.size() * sizeof(float), idd_buffer);
             // buffer.buffer_to_gpu();
 
+            tex1.initialize(1920, 1080, renderer::core::base_texture2d::texture_format::rgba);
+            tex2.initialize(1920, 1080, renderer::core::base_texture2d::texture_format::rgba);
+
             if (framebuftest.initialize(1920, 1080))
             {
               std::cout << "framebuffer test success!\n";
             }
 
-            if (buffer.buffer_to_gpu())
+            if (buffer.initialize())
             {
               std::cout << "drawbuffer test success!\n";
             }
 
-            if (shader_thing.setup())
+            if (shader_thing.initialize())
             {
               std::cout << "shader test success!\n";
             }
 
-            // pipeline.evaluate();
+            pipeline.evaluate();
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
 

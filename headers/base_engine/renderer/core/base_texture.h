@@ -27,10 +27,18 @@ struct base_texture2d
     depth_stencil
   };
 
+  bool initialized{false};
+
   u0
   initialize(u32 _sx, u32 _sy, texture_format _format, bool is_reinit = false)
   {
     assert(handle == 0);
+
+    if (initialized)
+    {
+      LOG(INFO) << "trying to initialize already initialized texture!";
+      return;
+    }
 
     size_x = _sx;
     size_y = _sy;
@@ -141,12 +149,22 @@ struct base_texture2d
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    initialized = true;
   }
 
   u0
   destroy()
   {
+    initialized = false;
     glDeleteTextures(1, &handle);
+  }
+
+  u0
+  bind()
+  {
+    assert(initialized);
+    glBindTexture(GL_TEXTURE_2D, handle);
   }
 
   u0

@@ -67,5 +67,6 @@
     "xtr1common": "cpp",
     "xutility": "cpp"
   },
-  "C_Cpp.default.compileCommands": "c:\\Users\\blue\\Desktop\\git\\little_3d_mmo_thing\\build/compile_commands.json"
+  "C_Cpp.default.compileCommands": "c:\\Users\\blue\\Desktop\\git\\little_3d_mmo_thing\\build/compile_commands.json",
+  "cmake.ignoreCMakeListsMissing": true
 }

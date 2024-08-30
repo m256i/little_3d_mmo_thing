@@ -373,30 +373,17 @@ public:
     }
   }
 
-  // template <usize TColorAttachementCount>
-  // shader_pipeline_stage<decltype(shader_inputs)>
-  // operator>(framebuffer_pipeline_stage<TColorAttachementCount> _framebuffer)
-  // {
-  //   static_assert(!(TColorAttachementCount > std::tuple_size_v<decltype(shader_outputs)>),
-  //                 "framebuffer target has more color attachements than shader has outputs!");
-  //   static_assert(!(TColorAttachementCount < std::tuple_size_v<decltype(shader_outputs)>),
-  //                 "framebuffer target has less color attachements than shader has outputs!");
-
-  //   _framebuffer.pipeline_stage.push_back(
-  //       [&]()
-  //       {
-  //         puts("binding shader!");
-  //         bind();
-  //       });
-  //   return shader_pipeline_stage<decltype(shader_inputs)>{std::move(_framebuffer.pipeline_stage)};
-  // }
-
   /*
     @TODO: code cleanup some day later. this works but its really ugly
   */
   bool
-  setup()
+  initialize()
   {
+    if (initialized)
+    {
+      return false;
+    }
+
     const std::string shader_name_base = nullterminate_view(TShaderPath.to_view());
     std::string shader_real_name_base  = shader_name_base.substr(shader_name_base.find_last_of('/') + 1, shader_name_base.length());
     const std::string dir              = std::string(shader_name_base).substr(0, shader_name_base.find_last_of('/'));
@@ -637,6 +624,7 @@ public:
   u0
   bind(const std::array<u32, std::tuple_size_v<decltype(texture_inputs)>> &texure_handles)
   {
+    assert(initialized);
     /*
     update uniform values
     */
@@ -666,6 +654,7 @@ public:
   u0
   bind()
   {
+    assert(initialized);
     /*
     update uniform values
     */
@@ -677,6 +666,14 @@ public:
         });
 
     internal_shader.use();
+  }
+
+  u0
+  destroy()
+  {
+    assert(initialized);
+    glDeleteShader(internal_shader.id);
+    initialized = false;
   }
 };
 

@@ -147,7 +147,7 @@ public:
   // }
 
   bool
-  buffer_to_gpu()
+  initialize()
   {
     if (initialized)
     {

@@ -1,3 +1,5 @@
 libs/*
 .vscode/settings.json
 data/*
+*.exe
+tools/*
