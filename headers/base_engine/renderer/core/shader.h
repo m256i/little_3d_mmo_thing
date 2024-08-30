@@ -1,7 +1,6 @@
 #pragma once
 
 #include "gl_type_translations.h"
-#include "pipeline.h"
 #include <common.h>
 #include <glm/glm.hpp>
 #include <glad/glad.h>
@@ -74,6 +73,8 @@ struct shader_uniform_pack
     }
   }
 
+  static constexpr usize uniform_count = sizeof...(TUniforms);
+
   std::tuple<TUniforms...> uniforms{};
 };
 
@@ -119,73 +120,49 @@ struct internal_shader
   }
 
   u0
-  setBool(std::string_view _name, bool _value) const
-  {
-    glUniform1i(glGetUniformLocation(id, _name.data()), (int)_value);
-  }
-
-  u0
-  setInt(std::string_view _name, int _value) const
+  set(std::string_view _name, int _value) const
   {
     glUniform1i(glGetUniformLocation(id, _name.data()), _value);
   }
 
   u0
-  setFloat(std::string_view _name, float _value) const
+  set(std::string_view _name, float _value) const
   {
     glUniform1f(glGetUniformLocation(id, _name.data()), _value);
   }
 
   u0
-  setVec2(std::string_view _name, const glm::vec2 &_value) const
+  set(std::string_view _name, const glm::vec2 &_value) const
   {
     glUniform2fv(glGetUniformLocation(id, _name.data()), 1, &_value[0]);
   }
 
   u0
-  setVec2(std::string_view _name, float _x, float _y) const
-  {
-    glUniform2f(glGetUniformLocation(id, _name.data()), _x, _y);
-  }
-
-  u0
-  setVec3(std::string_view _name, const glm::vec3 &_value) const
+  set(std::string_view _name, const glm::vec3 &_value) const
   {
     glUniform3fv(glGetUniformLocation(id, _name.data()), 1, &_value[0]);
   }
 
   u0
-  setVec3(std::string_view _name, float _x, float _y, float _z) const
-  {
-    glUniform3f(glGetUniformLocation(id, _name.data()), _x, _y, _z);
-  }
-
-  u0
-  setVec4(std::string_view _name, const glm::vec4 &_value) const
+  set(std::string_view _name, const glm::vec4 &_value) const
   {
     glUniform4fv(glGetUniformLocation(id, _name.data()), 1, &_value[0]);
   }
 
   u0
-  setVec4(std::string_view _name, float _x, float _y, float _z, float _w)
-  {
-    glUniform4f(glGetUniformLocation(id, _name.data()), _x, _y, _z, _w);
-  }
-
-  u0
-  setMat2(std::string_view _name, const glm::mat2 &_mat) const
+  set(std::string_view _name, const glm::mat2 &_mat) const
   {
     glUniformMatrix2fv(glGetUniformLocation(id, _name.data()), 1, GL_FALSE, &_mat[0][0]);
   }
 
   u0
-  setMat3(std::string_view _name, const glm::mat3 &_mat) const
+  set(std::string_view _name, const glm::mat3 &_mat) const
   {
     glUniformMatrix3fv(glGetUniformLocation(id, _name.data()), 1, GL_FALSE, &_mat[0][0]);
   }
 
   u0
-  setMat4(std::string_view _name, const glm::mat4 &_mat) const
+  set(std::string_view _name, const glm::mat4 &_mat) const
   {
     glUniformMatrix4fv(glGetUniformLocation(id, _name.data()), 1, GL_FALSE, &_mat[0][0]);
   }
@@ -396,23 +373,23 @@ public:
     }
   }
 
-  template <usize TColorAttachementCount>
-  shader_pipeline_stage<decltype(shader_inputs)>
-  operator>(framebuffer_pipeline_stage<TColorAttachementCount> _framebuffer)
-  {
-    static_assert(!(TColorAttachementCount > std::tuple_size_v<decltype(shader_outputs)>),
-                  "framebuffer target has more color attachements than shader has outputs!");
-    static_assert(!(TColorAttachementCount < std::tuple_size_v<decltype(shader_outputs)>),
-                  "framebuffer target has less color attachements than shader has outputs!");
+  // template <usize TColorAttachementCount>
+  // shader_pipeline_stage<decltype(shader_inputs)>
+  // operator>(framebuffer_pipeline_stage<TColorAttachementCount> _framebuffer)
+  // {
+  //   static_assert(!(TColorAttachementCount > std::tuple_size_v<decltype(shader_outputs)>),
+  //                 "framebuffer target has more color attachements than shader has outputs!");
+  //   static_assert(!(TColorAttachementCount < std::tuple_size_v<decltype(shader_outputs)>),
+  //                 "framebuffer target has less color attachements than shader has outputs!");
 
-    _framebuffer.pipeline_stage.push_back(
-        [&]()
-        {
-          puts("binding shader!");
-          bind();
-        });
-    return shader_pipeline_stage<decltype(shader_inputs)>{std::move(_framebuffer.pipeline_stage)};
-  }
+  //   _framebuffer.pipeline_stage.push_back(
+  //       [&]()
+  //       {
+  //         puts("binding shader!");
+  //         bind();
+  //       });
+  //   return shader_pipeline_stage<decltype(shader_inputs)>{std::move(_framebuffer.pipeline_stage)};
+  // }
 
   /*
     @TODO: code cleanup some day later. this works but its really ugly
@@ -658,8 +635,47 @@ public:
   }
 
   u0
+  bind(const std::array<u32, std::tuple_size_v<decltype(texture_inputs)>> &texure_handles)
+  {
+    /*
+    update uniform values
+    */
+    for_constexpr<0, uniforms.uniform_count, 1>(
+        [&](auto ite)
+        {
+          auto &uniform = std::get<ite>(uniforms.uniforms);
+          internal_shader.set(uniform.name, uniform.object);
+        });
+
+    /*
+    bind the textures
+    */
+    for_constexpr<0, std::tuple_size_v<decltype(texture_inputs)>, 1>(
+        [&](auto ite)
+        {
+          auto &texture = std::get<ite>(texture_inputs);
+          internal_shader.set(texture.name, (i32)texure_handles[ite]);
+        });
+
+    internal_shader.use();
+  }
+
+  /*
+  pass with no textures
+  */
+  u0
   bind()
   {
+    /*
+    update uniform values
+    */
+    for_constexpr<0, uniforms.uniform_count, 1>(
+        [&](auto ite)
+        {
+          auto &uniform = std::get<ite>(uniforms.uniforms);
+          internal_shader.set(uniform.name, uniform.object);
+        });
+
     internal_shader.use();
   }
 };

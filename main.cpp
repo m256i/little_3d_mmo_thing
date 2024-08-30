@@ -61,6 +61,9 @@
 #include <base_engine/renderer/core/draw_buffer.h>
 #include <base_engine/renderer/core/shader.h>
 
+#include <base_engine/renderer/core/pipeline.h>
+#include <base_engine/renderer/core/base_texture.h>
+
 constinit f32 lastX = 1920.f / 2.0f;
 constinit f32 lastY = 1080.f / 2.0f;
 
@@ -183,8 +186,6 @@ renderer::core::frame_buffer<
 
 INITIALIZE_EASYLOGGINGPP
 
-auto pipeline = buffer > (shader_thing > framebuftest.target());
-
 auto
 main(i32 argc, char** argv) -> i32
 {
@@ -210,6 +211,13 @@ main(i32 argc, char** argv) -> i32
 
   shader_thing.get_uniform<"model", glm::mat4>()[0][0] = 69;
   std::cout << "ASDHASDH: " << shader_thing.get_uniform<"model", glm::mat4>()[0][0] << "\n";
+
+  renderer::core::base_texture2d tex1, tex2;
+
+  {
+    using namespace renderer::core;
+    auto pipeline = combine{buffer | tex1 | tex2} > shader_thing > framebuftest;
+  }
 
   static_world_model_t skybox3d_model{"skybox"};
 
@@ -242,7 +250,7 @@ main(i32 argc, char** argv) -> i32
               std::cout << "shader test success!\n";
             }
 
-            pipeline.evaluate();
+            // pipeline.evaluate();
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
 

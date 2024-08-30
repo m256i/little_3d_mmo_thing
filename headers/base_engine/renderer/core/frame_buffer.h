@@ -9,7 +9,6 @@
 #include <stack>
 #include <cassert>
 #include "base_texture.h"
-#include "pipeline.h"
 
 template <typename TType>
 struct wstack : std::stack<TType>
@@ -183,25 +182,25 @@ struct frame_buffer
   u32 handle{};
   u32 screen_w, screen_h;
 
-  operator framebuffer_pipeline_stage<sizeof...(TColorAttachments)>()
-  {
-    std::stack<std::function<void()>> out;
-    out.push([&]() { bind(); });
-    return std::move(framebuffer_pipeline_stage<sizeof...(TColorAttachments)>{.pipeline_stage{out}});
-  }
+  // operator framebuffer_pipeline_stage<sizeof...(TColorAttachments)>()
+  // {
+  //   std::stack<std::function<void()>> out;
+  //   out.push([&]() { bind(); });
+  //   return std::move(framebuffer_pipeline_stage<sizeof...(TColorAttachments)>{.pipeline_stage{out}});
+  // }
 
-  framebuffer_pipeline_stage<sizeof...(TColorAttachments)>
-  target()
-  {
-    std::vector<std::function<void()>> out;
-    out.push_back(
-        [&]()
-        {
-          puts("binding framebuffer object!");
-          bind();
-        });
-    return std::move(framebuffer_pipeline_stage<sizeof...(TColorAttachments)>{.pipeline_stage{out}});
-  }
+  // framebuffer_pipeline_stage<sizeof...(TColorAttachments)>
+  // target()
+  // {
+  //   std::vector<std::function<void()>> out;
+  //   out.push_back(
+  //       [&]()
+  //       {
+  //         puts("binding framebuffer object!");
+  //         bind();
+  //       });
+  //   return std::move(framebuffer_pipeline_stage<sizeof...(TColorAttachments)>{.pipeline_stage{out}});
+  // }
 
   bool initialized = false;
 

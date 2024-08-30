@@ -4,8 +4,6 @@
 #include <glm/glm.hpp>
 #include <glad/glad.h>
 #include <cassert>
-#include "pipeline.h"
-#include "shader.h"
 
 #include "gl_type_translations.h"
 
@@ -96,50 +94,57 @@ public:
     compiles/works
     */
 
-    for_constexpr<0, sizeof...(TAttributes), 1>(
-        [&](auto ite)
-        {
-          if (found_faulty)
+    if constexpr (sizeof...(TAttributes) != std::tuple_size_v<TInAttibuteTuple>)
+    {
+      return false;
+    }
+    else
+    {
+      for_constexpr<0, sizeof...(TAttributes), 1>(
+          [&](auto ite)
           {
-            return;
-          }
+            if (found_faulty)
+            {
+              return;
+            }
 
-          constexpr auto vertex_attrib = std::get<ite>(attribute_row);
-          constexpr auto shader_ipt    = std::get<ite>(TInAttibuteTuple{});
+            constexpr auto vertex_attrib = std::get<ite>(attribute_row);
+            constexpr auto shader_ipt    = std::get<ite>(TInAttibuteTuple{});
 
-          if (shader_ipt.name != vertex_attrib.attribute_name)
-          {
-            found_faulty = true;
-          }
-          if (!std::is_same_v<typename decltype(shader_ipt)::type, typename decltype(vertex_attrib)::attribute_common_type>)
-          {
-            found_faulty = true;
-          }
-        });
+            if (shader_ipt.name != vertex_attrib.attribute_name)
+            {
+              found_faulty = true;
+            }
+            if (!std::is_same_v<typename decltype(shader_ipt)::type, typename decltype(vertex_attrib)::attribute_common_type>)
+            {
+              found_faulty = true;
+            }
+          });
 
-    return found_faulty;
+      return found_faulty;
+    }
   }
 
-  template <typename TInAttibuteTuple>
-  vertex_buffer_pipeline_stage
-  operator>(shader_pipeline_stage<TInAttibuteTuple> _shader)
-  {
-    static_assert(std::tuple_size_v<TInAttibuteTuple> == sizeof...(TAttributes),
-                  "mismatch of vertex buffer attributes and shader input attributes");
+  // template <typename TInAttibuteTuple>
+  // vertex_buffer_pipeline_stage
+  // operator>(shader_pipeline_stage<TInAttibuteTuple> _shader)
+  // {
+  //   static_assert(std::tuple_size_v<TInAttibuteTuple> == sizeof...(TAttributes),
+  //                 "mismatch of vertex buffer attributes and shader input attributes");
 
-    /*
-    test attributes against shader inputs
-    */
-    static_assert(!shader_matches_drawbuf<TInAttibuteTuple>(), "mismatch in vertex attributes and shader inputs!");
+  //   /*
+  //   test attributes against shader inputs
+  //   */
+  //   static_assert(!shader_matches_drawbuf<TInAttibuteTuple>(), "mismatch in vertex attributes and shader inputs!");
 
-    _shader.pipeline_stage.push_back(
-        [&]()
-        {
-          puts("binding vertex buffer");
-          bind_buffers();
-        });
-    return {std::move(_shader.pipeline_stage)};
-  }
+  //   _shader.pipeline_stage.push_back(
+  //       [&]()
+  //       {
+  //         puts("binding vertex buffer");
+  //         bind_buffers();
+  //       });
+  //   return {std::move(_shader.pipeline_stage)};
+  // }
 
   bool
   buffer_to_gpu()
