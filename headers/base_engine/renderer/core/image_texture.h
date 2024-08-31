@@ -10,11 +10,13 @@
 #include <common.h>
 #include <stb_image_resize.h>
 
+#include <stb_dxt.h>
+
 namespace renderer
 {
+
 struct image_tex
 {
-
   /* TODO handle differnt channel types */
   u0
   load(const char* _path)
@@ -24,7 +26,6 @@ struct image_tex
 
     if (data)
     {
-
       u32 format{0};
       switch (channels)
       {
@@ -57,20 +58,31 @@ struct image_tex
       }
       }
 
+      puts("lmaooo");
+
       glGenTextures(1, &tex_handle);
       glBindTexture(GL_TEXTURE_2D, tex_handle);
 
-      glTexImage2D(GL_TEXTURE_2D, 0, format, size_x, size_y, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+      //      auto buff = compressor.compress_image(size_x, size_y, data);
+
+      usize blocks_x    = (size_x + 6 - 1) / 6;
+      usize blocks_y    = (size_y + 6 - 1) / 6;
+      usize blocks_z    = 1;
+      usize buffer_size = blocks_x * blocks_y * blocks_z * 16;
+
+      // glTexImage2D(GL_TEXTURE_2D, 0, format, size_x, size_y, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+      glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, size_x, size_y, 0, buffer_size, 0);
 
       glGenerateMipmap(GL_TEXTURE_2D);
 
       // Set texture wrapping and filtering options
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-      // Free stb_image allocated data
+      // free(buff);
+      //  Free stb_image allocated data
       stbi_image_free(data);
     }
     else
@@ -78,6 +90,28 @@ struct image_tex
       puts("failos");
       std::cout << "Failed to load texture: " << _path << std::endl;
     }
+  }
+
+  u0
+  load_from_buf(usize _size_x, usize _size_y, char* _buffer, u32 _num_channels, bool _do_compression)
+  {
+    size_x = _size_x;
+    size_y = _size_y;
+
+    assert(_num_channels == 4); // ASTC only worls with rgba textures
+
+    glGenTextures(1, &tex_handle);
+    glBindTexture(GL_TEXTURE_2D, tex_handle);
+
+    // glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_ASTC_6x6_KHR, size_x, size_y, 0, GL_RGBA, GL_UNSIGNED_BYTE, _buffer);
+
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    // Set texture wrapping and filtering options
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   }
 
   u0
@@ -96,9 +130,61 @@ struct image_tex
   GLuint tex_handle{0};
 };
 
+inline void
+CompressTextureDXT1(unsigned char* dest, const unsigned char* src, int width, int height)
+{
+  int block_size = 8; // 8 bytes per block for DXT1
+
+  int blocks_x = (width + 3) / 4;
+  int blocks_y = (height + 3) / 4;
+
+  for (int y = 0; y < blocks_y; ++y)
+  {
+    for (int x = 0; x < blocks_x; ++x)
+    {
+      // Position in the destination buffer
+      unsigned char* dest_block = dest + (y * blocks_x + x) * block_size;
+
+      // Position in the source buffer (RGBA)
+      unsigned char block[16 * 4]; // 16 pixels * 4 bytes per pixel (RGBA)
+      for (int by = 0; by < 4; ++by)
+      {
+        for (int bx = 0; bx < 4; ++bx)
+        {
+          int src_x = x * 4 + bx;
+          int src_y = y * 4 + by;
+
+          // Handle edge cases where the texture isn't a multiple of 4 in size
+          if (src_x < width && src_y < height)
+          {
+            int src_index   = (src_y * width + src_x) * 4;
+            int block_index = (by * 4 + bx) * 4;
+
+            block[block_index + 0] = src[src_index + 0]; // R
+            block[block_index + 1] = src[src_index + 1]; // G
+            block[block_index + 2] = src[src_index + 2]; // B
+            block[block_index + 3] = src[src_index + 3]; // A
+          }
+          else
+          {
+            // If we're outside the texture bounds, pad with zeros
+            int block_index        = (by * 4 + bx) * 4;
+            block[block_index + 0] = 0;
+            block[block_index + 1] = 0;
+            block[block_index + 2] = 0;
+            block[block_index + 3] = 0;
+          }
+        }
+      }
+
+      // Compress this 4x4 block
+      stb_compress_dxt_block(dest_block, block, 0, STB_DXT_HIGHQUAL); // 0 for no alpha, STB_DXT_NORMAL mode
+    }
+  }
+}
+
 struct image_tex_lod
 {
-
   u0
   load(const char* _path, std::string_view texture_type = "texture_diffuse")
   {
@@ -159,13 +245,13 @@ struct image_tex_lod
       {
         format = (u32)GL_RGBA;
 
-        for (int i = 0; i < size_x * size_y * 4; i += 4)
+        for (int i = 0; i < new_size_x * new_size_y * 4; i += 4)
         {
-          float alpha = data[i + 3] / 255.0f;
-          data[i]     = static_cast<unsigned char>(data[i] * alpha);     // R
-          data[i + 1] = static_cast<unsigned char>(data[i + 1] * alpha); // G
-          data[i + 2] = static_cast<unsigned char>(data[i + 2] * alpha); // B
-                                                                         // data[i + 3] is already the alpha channel
+          float alpha              = data[i + 3] / 255.0f;
+          scaled_image_data[i]     = static_cast<unsigned char>(data[i] * alpha);     // R
+          scaled_image_data[i + 1] = static_cast<unsigned char>(data[i + 1] * alpha); // G
+          scaled_image_data[i + 2] = static_cast<unsigned char>(data[i + 2] * alpha); // B
+                                                                                      // data[i + 3] is already the alpha channel
         }
 
         break;
@@ -178,16 +264,36 @@ struct image_tex_lod
 
       glGenTextures(1, &handle);
       glBindTexture(GL_TEXTURE_2D, handle);
-      glTexImage2D(GL_TEXTURE_2D, 0, format, new_size_x, new_size_y, 0, format, GL_UNSIGNED_BYTE, scaled_image_data);
+
+      // auto buff = compressor.compress_image(new_size_x, new_size_y, scaled_image_data);
+
+      // glTexImage2D(GL_TEXTURE_2D, 0, format, size_x, size_y, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+
+      int width      = new_size_x;
+      int height     = new_size_y;
+      int block_size = 8; // 8 bytes per block for DXT1
+
+      int blocks_x = (width + 3) / 4;
+      int blocks_y = (height + 3) / 4;
+
+      int total_size                 = blocks_x * blocks_y * block_size;
+      unsigned char* compressed_data = (unsigned char*)malloc(total_size);
+      CompressTextureDXT1(compressed_data, scaled_image_data, new_size_x, new_size_y);
+      glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, new_size_x, new_size_y, 0, total_size, compressed_data);
+
       glGenerateMipmap(GL_TEXTURE_2D);
 
       // Set texture wrapping and filtering options
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+      // free(buff);
+
       tex_handles[i] = handle;
+
+      free(compressed_data);
 
       // Free stb_image allocated data
       delete[] scaled_image_data;

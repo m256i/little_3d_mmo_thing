@@ -74,30 +74,6 @@ struct instanced_static_world_model
     return instance_data_buffer;
   }
 
-  glm::mat4
-  RotateAroundPoint(const glm::mat4 &matrix, const glm::vec3 &point, float angle, const glm::vec3 &axis)
-  {
-    // Step 1: Translate the point to the origin
-    glm::mat4 translationToOrigin = glm::translate(glm::mat4(1.0f), -point);
-    glm::mat4 rotation            = glm::rotate(glm::mat4(1.0f), angle, axis);
-    glm::mat4 translationBack     = glm::translate(glm::mat4(1.0f), point);
-
-    // Combine the transformations: T_back * R * T_origin * M
-    return translationBack * rotation * translationToOrigin * matrix;
-  }
-
-  glm::mat4
-  rotateAroundPoint(const glm::mat4 &matrix, const glm::vec3 &point, float angle, const glm::vec3 &axis)
-  {
-    // Translate the matrix to the origin
-    glm::mat4 translation        = glm::translate(glm::mat4(1.0f), -point);
-    glm::mat4 rotation           = glm::rotate(glm::mat4(1.0f), angle, axis);
-    glm::mat4 inverseTranslation = glm::translate(glm::mat4(1.0f), point);
-
-    // Combine the transformations
-    return inverseTranslation * rotation * translation * matrix;
-  }
-
   // TODO: possibly slow and needs some scaling optimizations as in threading or maybe a compute shader
   u0
   apply_translation_at(usize _index)
@@ -122,8 +98,6 @@ struct instanced_static_world_model
 
     model = glm::scale(model, instance.world_scale);
 
-    // model = glm::rotate(model, glm::radians(90.0f), {0, 0, 1});
-    //  model = glm::scale(model, instance.world_scale);
     translated_instance_data.at(_index) = model;
   }
 
