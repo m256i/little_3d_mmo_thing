@@ -161,7 +161,7 @@ struct base_texture2d
   }
 
   u0
-  bind()
+  bind() const
   {
     assert(initialized);
     glBindTexture(GL_TEXTURE_2D, handle);

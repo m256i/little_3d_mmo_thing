@@ -85,9 +85,10 @@ struct glsl_type_name_map<f32>
 template <>
 struct glsl_type_translation<f32>
 {
-  constexpr static usize type_size  = sizeof(f32);
-  constexpr static usize type_count = sizeof(f32) / sizeof(f32);
-  constexpr static GLenum gl_type   = GL_FLOAT;
+  constexpr static usize type_size           = sizeof(f32);
+  constexpr static usize type_count          = sizeof(f32) / sizeof(f32);
+  constexpr static GLenum gl_type            = GL_FLOAT;
+  constexpr static GLenum gl_underlying_type = GL_FLOAT;
 };
 
 template <>
@@ -99,9 +100,10 @@ struct glsl_type_name_map<i32>
 template <>
 struct glsl_type_translation<i32>
 {
-  constexpr static usize type_size  = sizeof(i32);
-  constexpr static usize type_count = sizeof(i32) / sizeof(i32);
-  constexpr static GLenum gl_type   = GL_INT;
+  constexpr static usize type_size           = sizeof(i32);
+  constexpr static usize type_count          = sizeof(i32) / sizeof(i32);
+  constexpr static GLenum gl_type            = GL_INT;
+  constexpr static GLenum gl_underlying_type = GL_INT;
 };
 
 template <>
@@ -113,9 +115,10 @@ struct glsl_type_name_map<u32>
 template <>
 struct glsl_type_translation<u32>
 {
-  constexpr static usize type_size  = sizeof(u32);
-  constexpr static usize type_count = sizeof(u32) / sizeof(u32);
-  constexpr static GLenum gl_type   = GL_UNSIGNED_INT;
+  constexpr static usize type_size           = sizeof(u32);
+  constexpr static usize type_count          = sizeof(u32) / sizeof(u32);
+  constexpr static GLenum gl_type            = GL_UNSIGNED_INT;
+  constexpr static GLenum gl_underlying_type = GL_UNSIGNED_INT;
 };
 
 template <>
@@ -127,9 +130,10 @@ struct glsl_type_name_map<glm::vec2>
 template <>
 struct glsl_type_translation<glm::vec2>
 {
-  constexpr static usize type_size  = sizeof(f32);
-  constexpr static usize type_count = sizeof(glm::vec2) / sizeof(f32);
-  constexpr static GLenum gl_type   = GL_FLOAT_VEC2;
+  constexpr static usize type_size           = sizeof(f32);
+  constexpr static usize type_count          = sizeof(glm::vec2) / sizeof(f32);
+  constexpr static GLenum gl_type            = GL_FLOAT_VEC2;
+  constexpr static GLenum gl_underlying_type = GL_FLOAT;
 };
 
 template <>
@@ -141,9 +145,10 @@ struct glsl_type_name_map<glm::vec3>
 template <>
 struct glsl_type_translation<glm::vec3>
 {
-  constexpr static usize type_size  = sizeof(f32);
-  constexpr static usize type_count = sizeof(glm::vec3) / sizeof(f32);
-  constexpr static GLenum gl_type   = GL_FLOAT_VEC3;
+  constexpr static usize type_size           = sizeof(f32);
+  constexpr static usize type_count          = sizeof(glm::vec3) / sizeof(f32);
+  constexpr static GLenum gl_type            = GL_FLOAT_VEC3;
+  constexpr static GLenum gl_underlying_type = GL_FLOAT;
 };
 
 template <>
@@ -155,9 +160,10 @@ struct glsl_type_name_map<glm::vec4>
 template <>
 struct glsl_type_translation<glm::vec4>
 {
-  constexpr static usize type_size  = sizeof(f32);
-  constexpr static usize type_count = sizeof(glm::vec4) / sizeof(f32);
-  constexpr static GLenum gl_type   = GL_FLOAT_VEC4;
+  constexpr static usize type_size           = sizeof(f32);
+  constexpr static usize type_count          = sizeof(glm::vec4) / sizeof(f32);
+  constexpr static GLenum gl_type            = GL_FLOAT_VEC4;
+  constexpr static GLenum gl_underlying_type = GL_FLOAT;
 };
 
 template <>
@@ -169,9 +175,10 @@ struct glsl_type_name_map<glm::mat3>
 template <>
 struct glsl_type_translation<glm::mat3>
 {
-  constexpr static usize type_size  = sizeof(f32);
-  constexpr static usize type_count = sizeof(glm::mat3) / sizeof(f32);
-  constexpr static GLenum gl_type   = GL_FLOAT_MAT3;
+  constexpr static usize type_size           = sizeof(f32);
+  constexpr static usize type_count          = sizeof(glm::mat3) / sizeof(f32);
+  constexpr static GLenum gl_type            = GL_FLOAT_MAT3;
+  constexpr static GLenum gl_underlying_type = GL_FLOAT;
 };
 
 template <>
@@ -183,8 +190,9 @@ struct glsl_type_name_map<glm::mat4>
 template <>
 struct glsl_type_translation<glm::mat4>
 {
-  constexpr static usize type_size  = sizeof(f32);
-  constexpr static usize type_count = sizeof(glm::mat4) / sizeof(f32);
-  constexpr static GLenum gl_type   = GL_FLOAT_MAT4;
+  constexpr static usize type_size           = sizeof(f32);
+  constexpr static usize type_count          = sizeof(glm::mat4) / sizeof(f32);
+  constexpr static GLenum gl_type            = GL_FLOAT_MAT4;
+  constexpr static GLenum gl_underlying_type = GL_FLOAT;
 };
 } // namespace renderer::core

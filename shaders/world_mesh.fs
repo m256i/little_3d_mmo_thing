@@ -8,7 +8,7 @@ in vec3 Normal;
 in vec3 Pos;
 in float camera_distance;
 
-uniform sampler2D texture_diffuse1, texture_diffuse2;
+uniform sampler2D grass_texture, rock_texture;
 
 const float FOG_DISTANCE = 600;
 const vec4 FOG_COLOR     = vec4(104, 83, 126, 255) / 255.f;
@@ -39,11 +39,11 @@ main()
 
   float fog_mask = clamp((1 / (dist / FOG_DISTANCE)), 0, 1);
 
-  vec4 textColor1 = ((texture(texture_diffuse1, uv)) * Normal.y);
+  vec4 textColor1 = ((texture(grass_texture, uv)) * Normal.y);
 
   textColor1 = clamp(textColor1, vec4(0, 0, 0, 0), textColor1) * fog_mask + vec4(light * col, 1) * fog_mask;
 
-  vec4 textColor2 = ((texture(texture_diffuse2, uv2)) * (1 - Normal.y));
+  vec4 textColor2 = ((texture(rock_texture, uv2)) * (1 - Normal.y));
   textColor2      = clamp(textColor2, vec4(0, 0, 0, 0), textColor2) * fog_mask + vec4(light * col, 1) * fog_mask;
 
   vec4 fogColor = FOG_COLOR * (1 - fog_mask);

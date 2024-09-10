@@ -36,7 +36,7 @@ struct ground_chunk
     test_foliage_model.init_shader("../basic_model_instanced.vs", "../basic_model_instanced.fs");
 
     mesh.initialize(0, chunk_scale, debug_menu, _coords);
-    mesh.load_shader();
+    // mesh.load_shader();
 
     /* loop over triangles in mesh */
 
@@ -77,6 +77,7 @@ struct ground_chunk
 
     foliage_points.clear();
     debug_triangles.clear();
+
     mesh.regenerate(scale_xyz, dmenu);
 
     for (usize i = 0; i < mesh.indices.size(); i = i + 3)
@@ -97,7 +98,7 @@ struct ground_chunk
 
       debug_triangles.push_back({.v0 = v0, .v1 = v1, .v2 = v2, .normal = trinorm});
 
-      std::cout << "trinorm: " << trinorm.x << " " << trinorm.y << " " << trinorm.z << "\n";
+      // std::cout << "trinorm: " << trinorm.x << " " << trinorm.y << " " << trinorm.z << "\n";
 
       if (trinorm.y > 0.8)
       {
@@ -109,7 +110,7 @@ struct ground_chunk
 
     for (const auto& [i, point] : utils::zip(foliage_points))
     {
-      std::cout << "generating grass on point: " << point.location.x << " " << point.location.y << "" << point.location.z << "\n";
+      // std::cout << "generating grass on point: " << point.location.x << " " << point.location.y << "" << point.location.z << "\n";
       test_foliage_model.get_instance_data()[i].world_position = point.location;
       test_foliage_model.get_instance_data()[i].world_rotation = point.normal;
       test_foliage_model.get_instance_data()[i].world_scale    = glm::vec3{20};
@@ -141,7 +142,7 @@ struct ground_chunk
     //   ++I;
     // }
 
-    mesh.draw(display_w, display_h, camera, lod::detail_level::lod_detail_full, 0xffffffff);
+    mesh.draw(display_w, display_h, camera, lod::detail_level::lod_detail_high, 0xffffffff);
     test_foliage_model.draw(proj, view);
   }
 

@@ -58,11 +58,7 @@
 #include <base_engine/world_generation/ground_chunk.h>
 #include <base_engine/scripting/scripting_api.h>
 
-#include <base_engine/renderer/core/draw_buffer.h>
-#include <base_engine/renderer/core/shader.h>
-
-#include <base_engine/renderer/core/pipeline.h>
-#include <base_engine/renderer/core/base_texture.h>
+#include <base_engine/renderer/static_render_model.h>
 
 constinit f32 lastX = 1920.f / 2.0f;
 constinit f32 lastY = 1080.f / 2.0f;
@@ -143,44 +139,44 @@ TODO: combine drawbuffers of tris and quads into one and use only one drawcall
 */
 
 // clang-format off
-renderer::core::static_drawbuffer<
-  renderer::core::drawbuffer_type::tris,
-  renderer::core::drawbuf_attrib<"position", glm::vec4>,
-  renderer::core::drawbuf_attrib<"normal", glm::vec3>
-> buffer;
+// renderer::core::static_drawbuffer<
+//   renderer::core::drawbuffer_type::tris,
+//   renderer::core::drawbuf_attrib<"position", glm::vec4>,
+//   renderer::core::drawbuf_attrib<"normal", glm::vec3>
+// > buffer;
 
 
-renderer::core::shader<"world_mesh", "../shaders/world_mesh",
-  /*
-  shader vertex buf inputs
-  */
-  renderer::core::shader_input<"position", glm::vec3>,
-  renderer::core::shader_input<"normal", glm::vec3>,
-  /*
-  shader texture inputs
-  */
-  renderer::core::texture2d_shader_input<"texture_diffuse1">,
-  renderer::core::texture2d_shader_input<"texture_diffuse2">,
-  /*
-  shader uniform inputs (set when calling shader.bind(...))
-  */
-  renderer::core::shader_uniform<"model", glm::mat4>,
-  renderer::core::shader_uniform<"view", glm::mat4>,
-  renderer::core::shader_uniform<"projection", glm::mat4>,
-  /*
-  shader outputs
-  */
-  renderer::core::shader_output<"FragColor", glm::vec4>
-> shader_thing;
+// renderer::core::shader<"world_mesh", "../shaders/world_mesh",
+//   /*
+//   shader vertex buf inputs
+//   */
+//   renderer::core::shader_input<"position", glm::vec3>,
+//   renderer::core::shader_input<"normal", glm::vec3>,
+//   /*
+//   shader texture inputs
+//   */
+//   renderer::core::texture2d_shader_input<"texture_diffuse1">,
+//   renderer::core::texture2d_shader_input<"texture_diffuse2">,
+//   /*
+//   shader uniform inputs (set when calling shader.bind(...))
+//   */
+//   renderer::core::shader_uniform<"model", glm::mat4>,
+//   renderer::core::shader_uniform<"view", glm::mat4>,
+//   renderer::core::shader_uniform<"projection", glm::mat4>,
+//   /*
+//   shader outputs
+//   */
+//   renderer::core::shader_output<"FragColor", glm::vec4>
+// > shader_thing;
 
 
 
-renderer::core::frame_buffer<
-  renderer::core::frame_buffer_options<
-    renderer::core::frame_buffer_option::has_depth_texture
-  >{},
-  renderer::core::base_texture2d::texture_format::rgba
-> framebuftest;
+// renderer::core::frame_buffer<
+//   renderer::core::frame_buffer_options<
+//     renderer::core::frame_buffer_option::has_depth_texture
+//   >{},
+//   renderer::core::base_texture2d::texture_format::rgba
+// > framebuftest;
 
 // clang-format on
 
@@ -191,9 +187,9 @@ main(i32 argc, char** argv) -> i32
 {
   START_EASYLOGGINGPP(argc, argv);
 
-  LOG(DEBUG) << buffer.template get_name_index<"position">();
-  LOG(DEBUG) << buffer.template get_name_index<"normal">();
-  LOG(DEBUG) << buffer.template get_attribte_offset<"normal">();
+  // LOG(DEBUG) << buffer.template get_name_index<"position">();
+  // LOG(DEBUG) << buffer.template get_name_index<"normal">();
+  // LOG(DEBUG) << buffer.template get_attribte_offset<"normal">();
 
   std::unordered_map<u32, debug_bbox_t> debug_boxes{};
   debug_menu_t debug_menu{};
@@ -203,20 +199,25 @@ main(i32 argc, char** argv) -> i32
 
   instanced_static_world_model instanced_model{1}, instanced_model2{1};
 
-  lod_static_world_model_t LOD_tree{"lod_test_tree"};
+  // lod_static_world_model_t LOD_tree{"lod_test_tree"};
 
   // ground_mesh_chunk_t plane{};
   // ground_mesh_system world{};
   world_gen::ground_chunk ground;
 
-  shader_thing.get_uniform<"model", glm::mat4>()[0][0] = 69;
-  std::cout << "ASDHASDH: " << shader_thing.get_uniform<"model", glm::mat4>()[0][0] << "\n";
+  // shader_thing.get_uniform<"model", glm::mat4>()[0][0] = 69;
+  // std::cout << "ASDHASDH: " << shader_thing.get_uniform<"model", glm::mat4>()[0][0] << "\n";
 
   renderer::core::base_texture2d tex1, tex2;
+  renderer::image_tex_lod asdasd;
+
+  renderer::static_render_model TREEYes;
+
+  asdasd.set_lod_level(lod::detail_level::lod_detail_mid);
 
   puts("bruder was");
 
-  auto pipeline = renderer::core::combine{buffer | tex1 | tex2} > shader_thing > framebuftest;
+  // auto pipeline = renderer::core::combine{buffer | tex1 | asdasd} > shader_thing > framebuftest;
 
   puts("what");
 
@@ -231,33 +232,6 @@ main(i32 argc, char** argv) -> i32
       .init(
           [&](GLFWwindow* _window)
           {
-            // std::vector<float> vertex_buffer;
-            // std::vector<int> idd_buffer;
-            // buffer.set_buffers(vertex_buffer.data(), vertex_buffer.size() * sizeof(float), idd_buffer);
-            // buffer.buffer_to_gpu();
-
-            tex1.initialize(1920, 1080, renderer::core::base_texture2d::texture_format::rgba);
-            tex2.initialize(1920, 1080, renderer::core::base_texture2d::texture_format::rgba);
-
-            if (framebuftest.initialize(1920, 1080))
-            {
-              std::cout << "framebuffer test success!\n";
-            }
-
-            if (buffer.initialize())
-            {
-              std::cout << "drawbuffer test success!\n";
-            }
-
-            if (shader_thing.initialize())
-            {
-              std::cout << "shader test success!\n";
-            }
-
-            pipeline.evaluate();
-
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
             debug_menu.init_menu(_window);
 
             debug_menu.add_debug_widget("terrain", debug_menu_t::debug_widget_type::button, "clear noise handles",
@@ -310,8 +284,11 @@ void main()
 
             game_renderer.model_renderer.add_static_world_model("tree1", "../data/trees/trees/westfalltree03.obj");
 
-            instanced_model.load_model("../data/trees/trees/westfalltree03.obj");
+            instanced_model.load_model("../data/trees/trees/9ard_ardenweald_largetree04.obj");
             instanced_model.init_shader("../basic_model_instanced.vs", "../basic_model_instanced.fs");
+
+            // TREEYes.load_from_file("../data/playe_models/D0510041.obj");
+            TREEYes.load_from_file("../data/trees/trees/9ard_ardenweald_largetree04.obj");
 
             instanced_model2.load_model("../data/minerals/veb_rocks06.obj");
             instanced_model2.init_shader("../basic_model_instanced.vs", "../basic_model_instanced.fs");
@@ -329,9 +306,9 @@ void main()
               auto& instance_data  = instanced_model.get_instance_data()[i];
               auto& instance_data2 = instanced_model2.get_instance_data()[i];
 
-              instance_data.world_position  = {(i % county) * 50.f, -107.f, (i / county) * 50.f};
+              instance_data.world_position  = {(i % county) * 500.f, -107.f, (i / county) * 500.f};
               instance_data.world_scale     = {15, 15, 15};
-              instance_data2.world_position = {(i % county) * 50.f + 10.f, -107.f, (i / county) * 50.f + 10.f};
+              instance_data2.world_position = {(i % county) * 500.f + 10.f, -107.f, (i / county) * 500.f + 100.f};
               instance_data2.world_scale    = {15, 15, 15};
 
               instanced_model.apply_translation_at(i);
@@ -341,8 +318,8 @@ void main()
             instanced_model.buffer();
             instanced_model2.buffer();
 
-            LOD_tree.load_model("../data/trees/trees/9ard_ardenweald_largetree04.obj");
-            LOD_tree.init_shader();
+            // LOD_tree.load_model("../data/trees/trees/9ard_ardenweald_largetree04.obj");
+            // LOD_tree.init_shader();
 
             // for (const auto& mesh : game_renderer.model_renderer.static_world_models.at("dungeon").draw_model.meshes)
             //{
@@ -400,12 +377,15 @@ void main()
 
             // puts("new frame");
 
-            ground.draw(projection, view, game_renderer.display_w, game_renderer.display_h, game_renderer.game_camera);
+            // ground.draw(projection, view, game_renderer.display_w, game_renderer.display_h, game_renderer.game_camera);
+
             // world.draw(game_renderer.display_w, game_renderer.display_h, game_renderer.game_camera);
 
             // instanced_model2.draw(projection, view);
             // instanced_model.draw(projection, view);
-            //    LOD_tree.draw(projection, view, lod::detail_level::lod_detail_full);
+            // LOD_tree.draw(projection, view, lod::detail_level::lod_detail_mid);
+
+            TREEYes.draw(game_renderer.game_camera);
 
             // post_processor.bake(pp_pass1, renderings);
             // post_processor.draw(pp_pass1);

@@ -27,29 +27,26 @@
 
 #include <base_engine/debug/debug_menu.h>
 
+#include <base_engine/renderer/core/vertex_buffer.h>
+#include <base_engine/renderer/core/render_pipeline.h>
+
 /* handles LOD levels internally for main mesh and also foliage */
 /* possible things to think about in the future:
   - interactive foliage like trees and stones to cut down or chests (will hopefully be fixed by proper gameobj system)
   - what if we want different worldgen stuff like generating cave entrances using sbtractive method
  */
 
+/*
+TODO: clean up using pseudo classes that dont actually do anything and just pass name and path for textures and shaders
+
+*/
 struct ground_mesh_chunk_t
 {
-  basic_shader_t shader{"ground_plane_funny"};
-
-  renderer::image_tex_lod grass_texture{};
-  renderer::image_tex_lod rock_texture{};
+  renderer::image_tex_lod grass_texture = renderer::image_tex_lod("grass_texture", "../data/texture/grass.png");
+  renderer::image_tex_lod rock_texture  = renderer::image_tex_lod("rock_texture", "../data/texture/rock.png");
 
   f64 scale_xyz = 100.f;
   glm::vec3 world_position{0, 0, 0};
-
-  u0
-  load_shader()
-  {
-    shader.load_from_path("../world_mesh.vs", "../world_mesh.fs");
-  }
-
-  u32 vao, vbo, ebo;
 
   struct mesh_vert_instance
   {
@@ -57,16 +54,43 @@ struct ground_mesh_chunk_t
     glm::vec3 normal{};
   };
 
+  // clang-format off
+  renderer::core::pipeline::render_pipeline pipeline 
+  {
+      .vbuf     = {{
+        renderer::core::vertex_buffer::vertex_buffer_attribute
+        {
+          .name = "position", .type = renderer::core::vertex_buffer::vbuff_attribute_type::type_f32, .count = 3
+        },
+        renderer::core::vertex_buffer::vertex_buffer_attribute
+        {
+          .name = "normal", .type = renderer::core::vertex_buffer::vbuff_attribute_type::type_f32, .count = 3
+        }}},
+      .textures = 
+        {
+          {"grass_texture",  "../data/texture/grass.png"}, 
+          {"rock_texture",  "../data/texture/rock.png"}
+        },
+      .shader   = {"stupi shader", "../shaders/world_mesh.vs", "../shaders/world_mesh.fs"},
+      .fbo      = std::nullopt
+  };
+  // clang-format on
+
   std::vector<mesh_vert_instance> verts;
   std::vector<u32> indices{};
 
   constexpr static i32 grid_size = 50;
 
+  glm::mat4 model, view, projection{glm::perspective(glm::radians(90.f), 1920.f / 1080.f, 0.1f, 10'000.f)};
+
   u0
   initialize(usize _divs, i32 chunk_scale, debug_menu_t &debug_menu, glm::vec3 _coords = glm::vec3{0, 0, 0})
   {
-    grass_texture.load("../data/texture/grass.png");
-    rock_texture.load("../data/texture/rock.png");
+    pipeline.add_uniform_callack("model", [&]() { return model; });
+    pipeline.add_uniform_callack("projection", [&]() { return projection; });
+    pipeline.add_uniform_callack("view", [&]() { return view; });
+
+    pipeline.initialize();
 
     scale_xyz      = chunk_scale;
     world_position = _coords;
@@ -98,8 +122,9 @@ struct ground_mesh_chunk_t
           }
           else
           {
+            initialized = true;
             delete[] field;
-            return;
+            return; // this early return caused me alot of headaches
           }
         }
       }
@@ -119,41 +144,33 @@ struct ground_mesh_chunk_t
       auto &normal = mesh.normals[i];
 
       verts.push_back(mesh_vert_instance{glm::vec3{vertex.x, vertex.y, vertex.z}, glm::vec3{normal.x, normal.y, normal.z}});
+      pipeline.push_back_vertex(mesh_vert_instance{glm::vec3{vertex.x, vertex.y, vertex.z}, glm::vec3{normal.x, normal.y, normal.z}});
     }
 
     for (const auto &index : mesh.indices)
     {
       indices.push_back(index);
+      pipeline.push_back_index(index);
     }
 
-    // @TODO: abstract this stuff away into the /core/ library
+    pipeline.setup_drawbuffer();
+    initialized = true;
 
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    glGenBuffers(1, &ebo);
-
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(mesh_vert_instance), verts.data(), GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(u32), indices.data(), GL_STATIC_DRAW);
-
-    // coords
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)offsetof(mesh_vert_instance, vert));
-    glEnableVertexAttribArray(0);
-
-    // normals
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)offsetof(mesh_vert_instance, normal));
-    glEnableVertexAttribArray(1);
-
-    glBindVertexArray(0);
     delete[] field;
   }
 
   u0
   regenerate(i32 chunk_scale, debug_menu_t &debug_menu, glm::vec3 _coords = glm::vec3{0, 0, 0})
   {
+    if (!pipeline.initialized)
+    {
+      pipeline.add_uniform_callack("model", [&]() { return model; });
+      pipeline.add_uniform_callack("projection", [&]() { return projection; });
+      pipeline.add_uniform_callack("view", [&]() { return view; });
+
+      pipeline.initialize();
+    }
+
     scale_xyz      = chunk_scale;
     world_position = _coords;
 
@@ -184,6 +201,7 @@ struct ground_mesh_chunk_t
           }
           else
           {
+            initialized = true;
             delete[] field;
             return;
           }
@@ -193,6 +211,8 @@ struct ground_mesh_chunk_t
 
     verts.clear();
     indices.clear();
+
+    pipeline.clear_buffers();
 
     MC::mcMesh mesh;
     MC::marching_cube(field, n, n, n, mesh);
@@ -212,35 +232,17 @@ struct ground_mesh_chunk_t
       vertex.z /= grid_size;
 
       verts.push_back(mesh_vert_instance{glm::vec3{vertex.x, vertex.y, vertex.z}, glm::vec3{normal.x, normal.y, normal.z}});
+      pipeline.push_back_vertex(mesh_vert_instance{glm::vec3{vertex.x, vertex.y, vertex.z}, glm::vec3{normal.x, normal.y, normal.z}});
     }
 
     for (const auto &index : mesh.indices)
     {
       indices.push_back(index);
+      pipeline.push_back_index(index);
     }
 
-    glDeleteVertexArrays(1, &vao);
-    glDeleteBuffers(1, &vbo);
-    glDeleteBuffers(1, &ebo);
-
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    glGenBuffers(1, &ebo);
-
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(mesh_vert_instance), verts.data(), GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(u32), indices.data(), GL_STATIC_DRAW);
-
-    // coords
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)offsetof(mesh_vert_instance, vert));
-    glEnableVertexAttribArray(0);
-
-    // normals
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)offsetof(mesh_vert_instance, normal));
-    glEnableVertexAttribArray(1);
+    pipeline.setup_drawbuffer();
+    initialized = true;
 
     delete[] field;
   }
@@ -248,49 +250,21 @@ struct ground_mesh_chunk_t
   u0
   draw(auto display_w, auto display_h, auto &camera, lod::detail_level lod_level, u32 _col)
   {
-    shader.use();
+    assert(initialized);
 
-    static glm::mat4 _projection = glm::perspective(glm::radians(camera.fov), (float)display_w / (float)display_h, 0.1f, 10'000.f);
-    glm::mat4 _view              = camera.get_view_matrix();
-    glm::mat4 model              = glm::mat4(1.0f);
+    view = camera.get_view_matrix();
 
-    // might be  * grid_size
+    model = glm::mat4(1.0f);
     model = glm::translate(model, {world_position.x, world_position.y, world_position.z});
     model = glm::scale(model, {scale_xyz, scale_xyz, scale_xyz});
 
-    // idk why i even rotate this
-    // model = glm::rotate(model, glm::radians(90.f), glm::vec3{1.f, 0, 0});
-
-    shader.setMat4("projection", _projection);
-    shader.setMat4("view", _view);
-    shader.setMat4("model", model);
-
-    glBindVertexArray(vao);
-
-    const auto sampler1_uni_loc = shader.get_uniform_location("texture_diffuse1");
-    const auto sampler2_uni_loc = shader.get_uniform_location("texture_diffuse2");
-
-    shader.set_uniform_i32_from_index(sampler1_uni_loc, 0);
-    shader.set_uniform_i32_from_index(sampler2_uni_loc, 1);
-
-    glActiveTexture(GL_TEXTURE0);
-    grass_texture.bind(lod_level);
-
-    glActiveTexture(GL_TEXTURE1);
-    rock_texture.bind(lod_level);
-
-    glDrawElements(GL_TRIANGLES, (i32)indices.size(), GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
-
-    grass_texture.unbind();
-    rock_texture.unbind();
+    pipeline.draw_function();
   }
 
   u0
   destroy()
   {
-    glDeleteVertexArrays(1, &vao);
-    glDeleteBuffers(1, &vbo);
-    glDeleteBuffers(1, &ebo);
   }
+
+  bool initialized = false;
 };

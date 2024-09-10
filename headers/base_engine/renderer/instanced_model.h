@@ -86,7 +86,7 @@ struct instanced_static_world_model
 
     glm::vec3 rotation_axis = glm::cross(glm::vec3{0, 1, 0}, instance.world_rotation);
     float cos_angle         = glm::dot(glm::vec3{0, 1, 0}, instance.world_rotation);
-    float angle             = glm::acos(cos_angle); // Angle in radians
+    float angle             = glm::acos(cos_angle);
 
     model = glm::translate(model, instance.world_position);
 

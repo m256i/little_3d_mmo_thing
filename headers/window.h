@@ -99,7 +99,7 @@ struct game_window_t
     }
 
     glfwWindowHint(GLFW_SAMPLES, 16);
-    glfwWindowHint(GLFW_DEPTH_BITS, 32); // Request a 24-bit depth buffer
+    // glfwWindowHint(GLFW_DEPTH_BITS, 24); // Request a 24-bit depth buffer
 
     glfwMakeContextCurrent(window);
 

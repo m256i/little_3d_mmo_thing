@@ -29,9 +29,10 @@ struct ground_mesh_system
         chunks[(i * num_chunks_sqrt) + j].scale_xyz      = chunk_scale;
         chunks[(i * num_chunks_sqrt) + j].world_position = {j * chunk_scale, 0, i * chunk_scale};
         chunks[(i * num_chunks_sqrt) + j].initialize(0, chunk_scale, debug_menu, {i * chunk_scale, 0, j * chunk_scale});
-        chunks[(i * num_chunks_sqrt) + j].load_shader();
+        // chunks[(i * num_chunks_sqrt) + j].load_shader();
       }
     }
+    initialized = true;
   }
 
   u0
@@ -47,11 +48,14 @@ struct ground_mesh_system
         chunks[(i * num_chunks_sqrt) + j].regenerate(chunk_scale, debug_menu, {i * chunk_scale, 0, j * chunk_scale});
       }
     }
+    initialized = true;
   }
 
   u0
   draw(auto display_w, auto display_h, render_camera_t& camera)
   {
+    assert(initialized);
+
     constexpr static auto vec3_dist = [](const glm::vec3& a, const glm::vec3& b) { return std::sqrt((b - a).x * (b - a).y * (b - a).z); };
 
     for (usize i = 0; i != num_chunks_sqrt; i++)
@@ -62,4 +66,6 @@ struct ground_mesh_system
       }
     }
   }
+
+  bool initialized = false;
 };

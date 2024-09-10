@@ -56,11 +56,36 @@ public:
   // processes a node in a recursive fashion. Processes each individual mesh located at the node and repeats this
   // process on its children nodes (if any).
   void process_node(aiNode *node, const aiScene *scene);
-
   mesh_t process_mesh(aiMesh *mesh, const aiScene *scene);
   // checks all material textures of a given type and loads the textures if they're not loaded yet.
   // the required info is returned as a Texture struct.
   std::vector<mesh_t::texture_t> load_mat_textures(aiMaterial *mat, aiTextureType type, std::string_view typeName);
+
+  u0
+  destroy()
+  {
+    for (const auto &tex : textures_loaded)
+    {
+      if (tex.id)
+      {
+        glDeleteProgram(tex.id);
+      }
+    }
+
+    for (auto &mesh : meshes)
+    {
+      glDeleteVertexArrays(1, &mesh.VAO);
+      glDeleteBuffers(1, &mesh.VBO);
+      glDeleteBuffers(1, &mesh.EBO);
+
+      mesh.indices.clear();
+      mesh.vertices.clear();
+      mesh.textures.clear();
+    }
+
+    this->textures_loaded.clear();
+    this->meshes.clear();
+  }
 };
 
 class lod_render_model_t
@@ -77,11 +102,8 @@ public:
   };
 
   std::array<lod_model_instance_data, (usize)lod::detail_level::lod_detail_enum_size> lod_meshes{};
-
   std::string_view directory;
-
   bool gamme_corretion;
-
   f32 model_scale_factor;
 
   // constructor, expects a filepath to a 3D model.
@@ -92,9 +114,7 @@ public:
   draw(const basic_shader_t &_shader, lod::detail_level lod_level, usize instance_count = 1) const
   {
     assert((usize)lod_level < lod_meshes.size());
-
     auto &lod_mesh = lod_meshes[(usize)lod_level];
-
     for (auto &mesh : lod_mesh.meshes)
     {
       mesh.draw(_shader, lod_level, instance_count);

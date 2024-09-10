@@ -75,23 +75,15 @@ struct lod_mesh_t
   static constexpr usize max_bone_deps = 4;
   struct vertex_t
   {
-    // position
     glm::vec3 position;
-    // normal
     glm::vec3 normal;
-    // texCoords
     glm::vec2 tex_coords;
-    // tangent
     glm::vec3 tangent;
-    // bitangent
     glm::vec3 bitangent;
-    // bone indexes which will influence this vertex
     i32 bone_ids[max_bone_deps];
-    // weights from each bone
     f32 weights[max_bone_deps];
   };
 
-  // mesh Data
   std::vector<vertex_t> vertices;
   std::vector<u32> indices;
   std::vector<renderer::image_tex_lod> textures;

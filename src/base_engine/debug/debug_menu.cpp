@@ -41,7 +41,7 @@ debug_menu_t::init_menu(GLFWwindow* _window)
   this->script_handler.init_vm();
 
   // redirect console out
-  old = std::cout.rdbuf(console_buffer.rdbuf());
+  // old = std::cout.rdbuf(console_buffer.rdbuf());
 }
 
 u0
