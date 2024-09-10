@@ -3,3 +3,4 @@ libs/*
 data/*
 *.exe
 tools/*
+.vscode/*
