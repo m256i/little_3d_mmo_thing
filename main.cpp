@@ -134,52 +134,6 @@ draw_tree_recursive(const tree_node_t& branch)
   }
 }
 
-/*
-TODO: combine drawbuffers of tris and quads into one and use only one drawcall
-*/
-
-// clang-format off
-// renderer::core::static_drawbuffer<
-//   renderer::core::drawbuffer_type::tris,
-//   renderer::core::drawbuf_attrib<"position", glm::vec4>,
-//   renderer::core::drawbuf_attrib<"normal", glm::vec3>
-// > buffer;
-
-
-// renderer::core::shader<"world_mesh", "../shaders/world_mesh",
-//   /*
-//   shader vertex buf inputs
-//   */
-//   renderer::core::shader_input<"position", glm::vec3>,
-//   renderer::core::shader_input<"normal", glm::vec3>,
-//   /*
-//   shader texture inputs
-//   */
-//   renderer::core::texture2d_shader_input<"texture_diffuse1">,
-//   renderer::core::texture2d_shader_input<"texture_diffuse2">,
-//   /*
-//   shader uniform inputs (set when calling shader.bind(...))
-//   */
-//   renderer::core::shader_uniform<"model", glm::mat4>,
-//   renderer::core::shader_uniform<"view", glm::mat4>,
-//   renderer::core::shader_uniform<"projection", glm::mat4>,
-//   /*
-//   shader outputs
-//   */
-//   renderer::core::shader_output<"FragColor", glm::vec4>
-// > shader_thing;
-
-
-
-// renderer::core::frame_buffer<
-//   renderer::core::frame_buffer_options<
-//     renderer::core::frame_buffer_option::has_depth_texture
-//   >{},
-//   renderer::core::base_texture2d::texture_format::rgba
-// > framebuftest;
-
-// clang-format on
-
 INITIALIZE_EASYLOGGINGPP
 
 auto
@@ -187,17 +141,13 @@ main(i32 argc, char** argv) -> i32
 {
   START_EASYLOGGINGPP(argc, argv);
 
-  // LOG(DEBUG) << buffer.template get_name_index<"position">();
-  // LOG(DEBUG) << buffer.template get_name_index<"normal">();
-  // LOG(DEBUG) << buffer.template get_attribte_offset<"normal">();
-
   std::unordered_map<u32, debug_bbox_t> debug_boxes{};
   debug_menu_t debug_menu{};
   partial_spacial_tree_t tree{};
 
   std::unordered_map<u32, voxel_grid_t> vgrids;
 
-  instanced_static_world_model instanced_model{1}, instanced_model2{1};
+  renderer::instanced_render_model_lod instanced_grass;
 
   // lod_static_world_model_t LOD_tree{"lod_test_tree"};
 
@@ -227,6 +177,8 @@ main(i32 argc, char** argv) -> i32
 
   usize pp_pass1;
 
+  bool wireframe_view = false;
+
   return create_window("WoW Clone :D", false)
       .register_callback(glfwSetCursorPosCallback, mouse_callback)
       .init(
@@ -253,6 +205,19 @@ main(i32 argc, char** argv) -> i32
 
             debug_menu.add_lib_script_module("noiselib", "../scripts/corelib/noiselib.wren", "API implementation of noise functions");
             debug_menu.add_lib_script_module("dbglib", "../scripts/corelib/dbglib.wren", "API implementation of debug functions");
+
+            debug_menu.add_debug_widget("model renderer", debug_menu_t::debug_widget_type::slider_f32, "wireframe",
+                                        [&](double val)
+                                        {
+                                          if (val >= 0.0)
+                                          {
+                                            wireframe_view = true;
+                                          }
+                                          else
+                                          {
+                                            wireframe_view = false;
+                                          }
+                                        });
 
             debug_overlay_t::init(_window, game_renderer.game_camera);
 
@@ -284,39 +249,34 @@ void main()
 
             game_renderer.model_renderer.add_static_world_model("tree1", "../data/trees/trees/westfalltree03.obj");
 
-            instanced_model.load_model("../data/trees/trees/9ard_ardenweald_largetree04.obj");
-            instanced_model.init_shader("../basic_model_instanced.vs", "../basic_model_instanced.fs");
+            LOG(INFO) << "retarr";
+
+            instanced_grass.load_model_from_file("../data/trees/trees/9ard_ardenweald_largetree04.obj");
+
+            LOG(INFO) << "loaded stupid test grass";
+            // instanced_model.init_shader("../basic_model_instanced.vs", "../basic_model_instanced.fs");
 
             // TREEYes.load_from_file("../data/playe_models/D0510041.obj");
             TREEYes.load_from_file("../data/trees/trees/9ard_ardenweald_largetree04.obj");
-
-            instanced_model2.load_model("../data/minerals/veb_rocks06.obj");
-            instanced_model2.init_shader("../basic_model_instanced.vs", "../basic_model_instanced.fs");
+            TREEYes.update_location();
 
             skybox3d_model.load_model("../data/sky/3d/dalaranskybox.obj");
             skybox3d_model.init_shader("../3d_sky_box.vs", "../3d_sky_box.fs");
 
-            static constexpr int county = 5;
+            static constexpr int county = 10;
 
-            instanced_model.set_instance_count(county * county);
-            instanced_model2.set_instance_count(county * county);
+            instanced_grass.set_instance_count(county * county);
 
             for (usize i = 0; i < county * county; ++i)
             {
-              auto& instance_data  = instanced_model.get_instance_data()[i];
-              auto& instance_data2 = instanced_model2.get_instance_data()[i];
-
-              instance_data.world_position  = {(i % county) * 500.f, -107.f, (i / county) * 500.f};
-              instance_data.world_scale     = {15, 15, 15};
-              instance_data2.world_position = {(i % county) * 500.f + 10.f, -107.f, (i / county) * 500.f + 100.f};
-              instance_data2.world_scale    = {15, 15, 15};
-
-              instanced_model.apply_translation_at(i);
-              instanced_model2.apply_translation_at(i);
+              auto& instance_data          = instanced_grass.get_instance_data()[i];
+              instance_data.world_position = {(i % county) * 1500.f, -107.f, (i / county) * 1500.f};
+              instance_data.world_scale    = {15, 15, 15};
+              instanced_grass.apply_translation_at(i);
             }
+            instanced_grass.buffer();
 
-            instanced_model.buffer();
-            instanced_model2.buffer();
+            instanced_grass.initialize_culling_grid();
 
             // LOD_tree.load_model("../data/trees/trees/9ard_ardenweald_largetree04.obj");
             // LOD_tree.init_shader();
@@ -364,7 +324,7 @@ void main()
             glm::mat4 view       = game_renderer.game_camera.get_view_matrix();
 
             skybox3d_model.vec_position = game_renderer.game_camera.vec_position;
-            skybox3d_model.vec_rotation = glm::vec3{0, (f32)glfwGetTime() / 60.f, 0};
+            skybox3d_model.vec_rotation = glm::vec3{0, (f32)glfwGetTime() / 40, 0};
 
             const auto renderings = [&]() {};
 
@@ -375,23 +335,31 @@ void main()
             // plane.draw(game_renderer.display_w, game_renderer.display_h, game_renderer.game_camera, lod::detail_level::lod_detail_potato,
             //            0xffffffff);
 
-            // puts("new frame");
-
             // ground.draw(projection, view, game_renderer.display_w, game_renderer.display_h, game_renderer.game_camera);
+            if (wireframe_view)
+            {
+              glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            }
 
-            // world.draw(game_renderer.display_w, game_renderer.display_h, game_renderer.game_camera);
+            instanced_grass.draw(game_renderer.game_camera);
 
-            // instanced_model2.draw(projection, view);
-            // instanced_model.draw(projection, view);
-            // LOD_tree.draw(projection, view, lod::detail_level::lod_detail_mid);
+            if (wireframe_view)
+            {
+              glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            }
 
-            TREEYes.draw(game_renderer.game_camera);
+            // TREEYes.rotation = {std::sin(glfwGetTime()) * 2, std::cos(glfwGetTime()) * 2, 0};
+            // TREEYes.scale    = {(std::sin(3.14194732 + glfwGetTime()) + 1) * 0.5, (std::sin(glfwGetTime()) + 1) * 0.5,
+            //                     (std::cos(glfwGetTime()) + 1) * 0.5};
+            // TREEYes.position = {std::sin(glfwGetTime()) * 2, 0, std::cos(glfwGetTime()) * 2};
+
+            // TREEYes.update_location();
+
+            // TREEYes.draw(game_renderer.game_camera);
+            // TREEYes.translated_bbox.debug_draw_axes();
 
             // post_processor.bake(pp_pass1, renderings);
             // post_processor.draw(pp_pass1);
-
-            // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            //     auto collision_meshes = tree.find(game_renderer.game_camera.vec_position);
 
             debug_menu.print_stdcout();
             debug_menu.draw(_window, in_menu, deltaTime);

@@ -81,6 +81,29 @@ namespace detail
 
 struct poly_buf
 {
+  poly_buf() = default;
+
+  poly_buf(const poly_buf& _other) : buf(_other.buf) {}
+  poly_buf(poly_buf&& _other) : buf(std::move(_other.buf)) {}
+
+  decltype(auto)
+  operator=(const poly_buf& _other) noexcept
+  {
+    this->buf = _other.buf;
+  }
+
+  decltype(auto)
+  operator=(poly_buf&& _other) noexcept
+  {
+    this->buf = std::move(_other.buf);
+  }
+
+  decltype(auto)
+  operator=(const std::vector<u8>& _other) noexcept
+  {
+    this->buf = _other;
+  }
+
   template <typename TType>
   u0
   push_back(const TType& _obj)
@@ -186,28 +209,58 @@ struct vertex_buffer
 
     glBindVertexArray(vao_handle);
 
-    switch (buffer_type)
+    if (instance_count == 1)
     {
-    case vertex_buffer_type::tris:
-    {
-      glDrawElements(GL_TRIANGLES, (u32)indices.size(), GL_UNSIGNED_INT, nullptr);
-      break;
+      switch (buffer_type)
+      {
+      case vertex_buffer_type::tris:
+      {
+        glDrawElements(GL_TRIANGLES, (u32)indices.size(), GL_UNSIGNED_INT, nullptr);
+        break;
+      }
+      case vertex_buffer_type::quads:
+      {
+        glDrawElements(GL_QUADS, (u32)indices.size(), GL_UNSIGNED_INT, nullptr);
+        break;
+      }
+      case vertex_buffer_type::lines:
+      {
+        glDrawElements(GL_LINES, (u32)indices.size(), GL_UNSIGNED_INT, nullptr);
+        break;
+      }
+      case vertex_buffer_type::points:
+      {
+        glDrawElements(GL_POINTS, (u32)indices.size(), GL_UNSIGNED_INT, nullptr);
+        break;
+      }
+      }
     }
-    case vertex_buffer_type::quads:
+    else
     {
-      glDrawElements(GL_QUADS, (u32)indices.size(), GL_UNSIGNED_INT, nullptr);
-      break;
-    }
-    case vertex_buffer_type::lines:
-    {
-      glDrawElements(GL_LINES, (u32)indices.size(), GL_UNSIGNED_INT, nullptr);
-      break;
-    }
-    case vertex_buffer_type::points:
-    {
-      glDrawElements(GL_POINTS, (u32)indices.size(), GL_UNSIGNED_INT, nullptr);
-      break;
-    }
+      switch (buffer_type)
+      {
+      case vertex_buffer_type::tris:
+      {
+        glDrawElementsInstancedBaseInstance(GL_TRIANGLES, (u32)indices.size(), GL_UNSIGNED_INT, nullptr, instance_count,
+                                            base_instance_index);
+        break;
+      }
+      case vertex_buffer_type::quads:
+      {
+        glDrawElementsInstancedBaseInstance(GL_QUADS, (u32)indices.size(), GL_UNSIGNED_INT, nullptr, instance_count, base_instance_index);
+        break;
+      }
+      case vertex_buffer_type::lines:
+      {
+        glDrawElementsInstancedBaseInstance(GL_LINES, (u32)indices.size(), GL_UNSIGNED_INT, nullptr, instance_count, base_instance_index);
+        break;
+      }
+      case vertex_buffer_type::points:
+      {
+        glDrawElementsInstancedBaseInstance(GL_POINTS, (u32)indices.size(), GL_UNSIGNED_INT, nullptr, instance_count, base_instance_index);
+        break;
+      }
+      }
     }
 
     assert(glGetError() == GL_NO_ERROR);
@@ -251,6 +304,18 @@ struct vertex_buffer
   push_back_index(u32 _index)
   {
     indices.push_back(_index);
+  }
+
+  u32
+  get_instance_count()
+  {
+    return instance_count;
+  }
+
+  u0
+  set_instance_count(u32 _instance_count)
+  {
+    instance_count = _instance_count;
   }
 
   u0
@@ -337,6 +402,8 @@ struct vertex_buffer
   std::vector<u32> indices{};
   std::vector<vertex_buffer_attribute> attributes{};
   vertex_buffer_type buffer_type{vertex_buffer_type::tris};
+  u32 instance_count        = 1;
+  usize base_instance_index = 0;
   bool initialized{false};
 };
 

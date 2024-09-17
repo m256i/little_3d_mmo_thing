@@ -112,6 +112,8 @@ struct texture_atlas
 
     auto [atlas_width, atlas_height] = detail::grow_and_pack_textures(rects, detail::estimate_atlas_size(rects));
 
+    LOG(INFO) << "generated atlas size";
+
     this->atlas_width  = atlas_width;
     this->atlas_height = atlas_height;
 
@@ -123,6 +125,8 @@ struct texture_atlas
       assert(texture_mappings.contains(rect.id));
       texture_mappings.at(rect.id).rect = rect;
     }
+
+    LOG(INFO) << "yuh";
 
     if (texture_pointer)
     {
@@ -156,7 +160,7 @@ struct texture_atlas
           texture_pointer[dst_index + 0] = texture_data[src_index + 0];
           texture_pointer[dst_index + 1] = tex.second.channel_count > 1 ? texture_data[src_index + 1] : 0;
           texture_pointer[dst_index + 2] = tex.second.channel_count > 2 ? texture_data[src_index + 2] : 0;
-          texture_pointer[dst_index + 3] = tex.second.channel_count > 3 ? texture_data[src_index + 3] : 254;
+          texture_pointer[dst_index + 3] = tex.second.channel_count > 3 ? texture_data[src_index + 3] : 255;
         }
       }
     }
@@ -185,10 +189,7 @@ struct texture_atlas
     @FIXME: fix the fix for tiling textures
     */
 
-    bool usigned = (u < 0);
-    bool vsigned = (u < 0);
-
-    // Handle cases where the value is below -1
+    //  Handle cases where the value is below - 1
     while (u < 0)
     {
       u += 1.0f; // Keep adding 1 until u is non-negative
@@ -198,8 +199,8 @@ struct texture_atlas
       v += 1.0f; // Keep adding 1 until v is non-negative
     }
 
-    u = std::fmod(u, 1.0f);
-    v = std::fmod(v, 1.0f);
+    u = std::fmodf(u, 1.0f + std::numeric_limits<f32>::epsilon());
+    v = std::fmodf(v, 1.0f + std::numeric_limits<f32>::epsilon());
 
     return {1 - (u * u_scale + u_offset), 1 - (v * v_scale + v_offset)};
   }
@@ -216,7 +217,7 @@ struct texture_atlas
 
   std::unordered_map<u32, input_texture> texture_mappings;
 
-  u8 *texture_pointer;
+  u8 *texture_pointer{nullptr};
   usize atlas_width, atlas_height;
   constexpr static u32 num_channels = 4; // texture atlases will always have 4 channels
 };

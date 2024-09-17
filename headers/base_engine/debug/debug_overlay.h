@@ -61,16 +61,21 @@ struct debug_overlay_t
 
     u32 vao, vbo, ebo;
 
-    std::array<glm::vec3, 8> vertices{default_cube_verts};
-    std::array<u32, 36> indices{default_cube_indices};
+    // Define the 8 vertices of the cube
+    std::array<glm::vec3, 8> vertices = {glm::vec3(_min.x, _min.y, _min.z), glm::vec3(_max.x, _min.y, _min.z),
+                                         glm::vec3(_max.x, _max.y, _min.z), glm::vec3(_min.x, _max.y, _min.z),
+                                         glm::vec3(_min.x, _min.y, _max.z), glm::vec3(_max.x, _min.y, _max.z),
+                                         glm::vec3(_max.x, _max.y, _max.z), glm::vec3(_min.x, _max.y, _max.z)};
 
-    glm::vec3 scalingFactors = glm::vec3{_max.x - _min.x, _max.y - _min.y, _max.z - _min.z} / 2.0f;
-    glm::vec3 center         = glm::vec3{(_max.x + _min.x) / 2.f, (_max.y + _min.y) / 2.f, (_max.z + _min.z) / 2.f};
-
-    for (int i = 0; i < 8; i++)
-    {
-      vertices[i] = center + (vertices[i] * scalingFactors);
-    }
+    // Create indices for two triangles per face
+    std::array<u32, 36> indices = {
+        0, 1, 2, 2, 3, 0, // front face
+        4, 5, 6, 6, 7, 4, // back face
+        0, 1, 5, 5, 4, 0, // bottom face
+        2, 3, 7, 7, 6, 2, // top face
+        0, 3, 7, 7, 4, 0, // left face
+        1, 2, 6, 6, 5, 1  // right face
+    };
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -106,7 +111,7 @@ struct debug_overlay_t
     }
 
     glBindVertexArray(vao);
-    glDrawElements(GL_QUADS, static_cast<unsigned int>(indices.size()), GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, static_cast<unsigned int>(indices.size()), GL_UNSIGNED_INT, 0); // Use GL_TRIANGLES instead of GL_QUADS
     glBindVertexArray(0);
 
     if (_wireframe)
@@ -117,6 +122,8 @@ struct debug_overlay_t
     glDeleteVertexArrays(1, &vao);
     glDeleteBuffers(1, &vbo);
     glDeleteBuffers(1, &ebo);
+
+    glUseProgram(0);
   }
 
   static void
@@ -162,6 +169,7 @@ struct debug_overlay_t
 
     glBindVertexArray(vao);
     glDrawArrays(GL_POINTS, 0, 1);
+    glBindVertexArray(0);
 
     if (_wireframe)
     {

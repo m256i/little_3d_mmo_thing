@@ -77,6 +77,7 @@ struct debug_menu_t
     button,
     slider_f32,
     slider_i32,
+    toggle,
   };
 
   struct debug_widget

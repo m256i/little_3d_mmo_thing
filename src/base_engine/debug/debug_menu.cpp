@@ -145,6 +145,14 @@ debug_menu_t::draw(GLFWwindow* _window, bool _is_open, f32 _delta_time)
               widget.callback(widget.curr_val_impl);
               break;
             }
+            case debug_widget_type::toggle:
+            {
+              bool val;
+              ImGui::Checkbox(widget.name.c_str(), &val);
+
+              widget.callback((f64)(u32)val);
+              break;
+            }
             case debug_widget_type::slider_i32:
             {
               i32 val = widget.curr_val_impl;

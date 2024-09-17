@@ -6,6 +6,41 @@
 
 #include <vector>
 
+struct frust_plane
+{
+  // unit vector
+  glm::vec3 normal = {0.f, 1.f, 0.f};
+
+  // distance from origin to the nearest point in the plane
+  float distance = 0.f;
+
+  frust_plane(const glm::vec3& point, const glm::vec3& normalVec)
+  {
+    normal   = glm::normalize(normalVec); // Ensure the normal is a unit vector
+    distance = glm::dot(normal, point);   // Compute distance from origin to the plane
+  }
+
+  float
+  signed_dist_to_center(const glm::vec3& point) const
+  {
+    return glm::dot(normal, point) - distance;
+  }
+
+  frust_plane() = default;
+};
+
+struct camera_frust
+{
+  frust_plane topFace;
+  frust_plane bottomFace;
+
+  frust_plane rightFace;
+  frust_plane leftFace;
+
+  frust_plane farFace;
+  frust_plane nearFace;
+};
+
 struct render_camera_t
 {
   enum class e_movement_types
@@ -20,7 +55,7 @@ struct render_camera_t
 
   constexpr static float default_yaw         = -90.0f;
   constexpr static float default_pitch       = 0.0f;
-  constexpr static float default_speed       = 20.5f;
+  constexpr static float default_speed       = 100.5f;
   constexpr static float default_sensitivity = 0.1f;
   constexpr static float default_fov         = 90.0f;
 
@@ -57,6 +92,24 @@ struct render_camera_t
     if (direction == e_movement_types::right) vec_position += vec_right * velocity;
     if (direction == e_movement_types::up) vec_position.y += velocity;
     if (direction == e_movement_types::down) vec_position.y -= velocity;
+  }
+
+  camera_frust
+  createFrustumFromCamera(float aspect, float fovY, float zNear, float zFar) const
+  {
+    camera_frust frustum;
+    const float halfVSide        = zFar * tanf(fovY * .5f);
+    const float halfHSide        = halfVSide * aspect;
+    const glm::vec3 frontMultFar = zFar * vec_front;
+
+    frustum.nearFace   = frust_plane{vec_position + zNear * vec_front, vec_front};
+    frustum.farFace    = frust_plane{vec_position + frontMultFar, -vec_front};
+    frustum.rightFace  = frust_plane{vec_position, glm::cross(frontMultFar - vec_right * halfHSide, vec_up)};
+    frustum.leftFace   = frust_plane{vec_position, glm::cross(vec_up, frontMultFar + vec_right * halfHSide)};
+    frustum.topFace    = frust_plane{vec_position, glm::cross(vec_right, frontMultFar - vec_up * halfVSide)};
+    frustum.bottomFace = frust_plane{vec_position, glm::cross(frontMultFar + vec_up * halfVSide, vec_right)};
+
+    return frustum;
   }
 
   void

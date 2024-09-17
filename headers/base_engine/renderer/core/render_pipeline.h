@@ -123,6 +123,8 @@ struct render_pipeline
       }
     }
 
+    LOG(INFO) << "loading shader: ";
+
     assert(internal_shader.load_from_path(shader.vert_path, shader.frag_path));
 
     const auto input_attributes = internal_shader.get_input_attributes();
@@ -243,11 +245,12 @@ struct render_pipeline
       for (const auto& shader_ipt_texture : texture_cache)
       {
         glActiveTexture(GL_TEXTURE0 + (GLenum)texidx);
-        internal_shader.setInt(shader_ipt_texture.first, texidx);
-        shader_ipt_texture.second.bind(lod::detail_level::lod_detail_mid);
-        texidx++;
-
         assert(glGetError() == GL_NO_ERROR);
+        internal_shader.setInt(shader_ipt_texture.first, texidx);
+        assert(glGetError() == GL_NO_ERROR);
+        shader_ipt_texture.second.bind();
+        assert(glGetError() == GL_NO_ERROR);
+        texidx++;
       }
 
       if (fbo.has_value())
@@ -262,6 +265,8 @@ struct render_pipeline
       vbuf.draw();
     };
 
+    LOG(INFO) << "initialized pipeline!";
+
     initialized = true;
   }
 
@@ -273,6 +278,24 @@ struct render_pipeline
     texture_cache[fnv1a::hash(_texture_name)].name = _texture_name;
 
     LOG(INFO) << "texture added to cache: " << _texture_name;
+  }
+
+  u0
+  set_instance_count(u32 _instance_count)
+  {
+    vbuf.set_instance_count(_instance_count);
+  }
+
+  u32
+  get_instance_count()
+  {
+    return vbuf.get_instance_count();
+  }
+
+  u0
+  set_base_instance_index(usize _idx)
+  {
+    vbuf.base_instance_index = _idx;
   }
 
   u0

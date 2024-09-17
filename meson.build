@@ -22,6 +22,7 @@ meshopt_lib = cmake.subproject('meshoptimizer')
 meshopt_target = meshopt_lib.dependency('meshoptimizer')
 
 
+
 root_path       = meson.global_source_root()
 lib_path        = root_path / 'libs'
 include_path    = 'include'
