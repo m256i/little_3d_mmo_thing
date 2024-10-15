@@ -308,4 +308,16 @@ eigen(const glm::mat3& _matrix)
   return std::nullopt;
 }
 
+inline glm::vec3
+absmax(const glm::vec3& _lhs, const glm::vec3& _rhs)
+{
+  return glm::vec3{std::max(_lhs.x, _rhs.x), std::max(_lhs.y, _rhs.y), std::max(_lhs.z, _rhs.z)};
+}
+
+inline glm::vec3
+absmin(const glm::vec3& _lhs, const glm::vec3& _rhs)
+{
+  return glm::vec3{std::min(_lhs.x, _rhs.x), std::min(_lhs.y, _rhs.y), std::min(_lhs.z, _rhs.z)};
+}
+
 } // namespace renderer::core::math

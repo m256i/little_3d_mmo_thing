@@ -12,6 +12,8 @@
 #include "glm/trigonometric.hpp"
 #include "render_primitives/bbox.h"
 
+#include "lighting_system/baked_light.h"
+
 namespace renderer
 {
 struct static_render_model
@@ -112,10 +114,15 @@ struct static_render_model_lod
         renderer::core::vertex_buffer::vertex_buffer_attribute
         {
           .name = "aTexCoords", .type = renderer::core::vertex_buffer::vbuff_attribute_type::type_f32, .count = 2
+        },
+        renderer::core::vertex_buffer::vertex_buffer_attribute
+        {
+          .name = "aLightMapTexCoords", .type = renderer::core::vertex_buffer::vbuff_attribute_type::type_f32, .count = 2
         },}},
 
       .textures = {
-        {"texture_diffuse1", nullptr}
+        {"texture_diffuse1", nullptr},
+        {"texture_baked_light1", nullptr},
       },
       .shader   = {"static_render_model shader", "../shaders/basic_model.vs", "../shaders/basic_model.fs"},
       .fbo      = std::nullopt
@@ -126,7 +133,12 @@ struct static_render_model_lod
 
   primitives::obb bounding_box;
 
+  lighting::static_lighting::static_lighting_t lighting_thing{
+      .light_sources{lighting::static_lighting::static_point_light_t{.position{10, 20, 5}, .color = 0xff0f0aff, .radius = 10.f}}};
+
   u0 load_from_file(std::string_view _path, lod::detail_level _detail_level);
+
+  image_tex_lod atlas_debug_tex;
 
   u0
   update_location()
@@ -153,8 +165,14 @@ struct static_render_model_lod
   u0
   draw(auto &camera)
   {
+
+    puts("drawing");
     view = camera.get_view_matrix();
     pipeline.draw_function();
+
+    glPointSize(5.f);
+    debug_overlay_t::draw_point(glm::vec3{10, 20, 5}, 0xff0f0aff, true);
+    glPointSize(1.f);
   }
 };
 

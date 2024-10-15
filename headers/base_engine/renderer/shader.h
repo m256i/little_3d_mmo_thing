@@ -228,6 +228,11 @@ struct basic_shader_t
   u0
   setInt(usize _name_hash, int _value) const
   {
+    if (!hashed_uniform_handles.contains(_name_hash))
+    {
+      LOG(INFO) << "TRYING TO SET INVALID INT/TEXTURE UNIFORM!!!";
+      return;
+    }
     glUniform1i(hashed_uniform_handles.at(_name_hash), _value);
   }
 

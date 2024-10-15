@@ -121,8 +121,8 @@ struct game_window_t
 
     glEnable(GL_BLEND);
 
-    // glEnable(GL_DEBUG_OUTPUT);
-    // glDebugMessageCallback(glDebugCallbackFunc, 0);
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(glDebugCallbackFunc, 0);
   }
 
   ~game_window_t() { glfwDestroyWindow(window); }

@@ -3,6 +3,7 @@
 #include <common.h>
 #include <glm/glm.hpp>
 #include <base_engine/debug/debug_overlay.h>
+#include "core/math.h"
 #include "static_world_model.h"
 #include "static_render_model.h"
 
@@ -303,35 +304,30 @@ struct instanced_render_model_lod
       max       = _max;
       divisions = _divs;
 
-      // 2. Calculate the number of grid blocks and resize the blocks vector
-      usize num_blocks = divisions * divisions * (divisions / 3); // Adjust for Y-axis divisions
+      // 2. Set Y-axis divisions to be 1/3 of the X/Z divisions, but at least 1
+      usize divisions_y = divisions / 3;
+
+      // 3. Calculate the number of grid blocks and resize the blocks vector
+      usize num_blocks = divisions * divisions_y * divisions;
       blocks.resize(num_blocks);
 
-      // 3. Compute the size of each grid block
-      glm::vec3 grid_size  = max - min; // Total size of the grid
-      glm::vec3 block_size = {
-          grid_size.x / static_cast<f32>(divisions), // X axis
-          /*
-          @FIXME:
-          do not try to "fix" this clang tidy warning by casting. the precision loss is the entire point
-          */
-          grid_size.y / static_cast<f32>(divisions / 3), // Y axis (one third)
-          grid_size.z / static_cast<f32>(divisions)      // Z axis
-      };
+      // 4. Compute the size of each grid block
+      glm::vec3 grid_size     = max - min; // Total size of the grid
+      glm::vec3 block_size_xz = glm::vec3(grid_size.x / static_cast<f32>(divisions), 0.0f,
+                                          grid_size.z / static_cast<f32>(divisions)); // Block size for X and Z axes
+      f32 block_size_y        = grid_size.y / static_cast<f32>(divisions_y);          // Block size for Y axis
 
-      // 4. Initialize each grid block's bounds (min and max)
+      // 5. Initialize each grid block's bounds (min and max)
       for (usize x = 0; x < divisions; ++x)
       {
-        for (usize y = 0; y < divisions / 3; ++y) // Loop through Y divisions (one third)
+        for (usize y = 0; y < divisions_y; ++y)
         {
           for (usize z = 0; z < divisions; ++z)
           {
-            usize block_index = x + y * divisions + z * divisions * (divisions / 3); // Adjust index for Y-axis
+            usize block_index = x + y * divisions + z * divisions * divisions_y;
 
-            glm::vec3 block_min = min + glm::vec3(x, y, z) * block_size;
-            glm::vec3 block_max = block_min + block_size;
-
-            assert(blocks.size() > block_index);
+            glm::vec3 block_min = min + glm::vec3(x, 0, z) * block_size_xz + glm::vec3(0.0f, y * block_size_y, 0.0f);
+            glm::vec3 block_max = block_min + glm::vec3(block_size_xz.x, block_size_y, block_size_xz.z);
 
             blocks[block_index].min = block_min;
             blocks[block_index].max = block_max;
@@ -339,7 +335,7 @@ struct instanced_render_model_lod
         }
       }
 
-      // 5. Assign instances to the appropriate grid blocks
+      // 6. Assign instances to the appropriate grid blocks
       for (usize i = 0; i < _instances.size(); ++i)
       {
         const instance_data &instance = _instances[i];
@@ -348,22 +344,16 @@ struct instanced_render_model_lod
         // Compute grid indices for the instance based on its position
         glm::vec3 relative_pos = (instance_position - min) / grid_size; // Normalize instance position within grid space
         usize index_x          = static_cast<usize>(relative_pos.x * divisions);
-        /*
-        @FIXME:
-        do not try to "fix" this clang tidy warning by casting. the precision loss is the entire point
-        */
-        usize index_y = static_cast<usize>(relative_pos.y * (divisions / 3)); // Use one-third for Y-axis
-        usize index_z = static_cast<usize>(relative_pos.z * divisions);
+        usize index_y          = static_cast<usize>(relative_pos.y * divisions_y);
+        usize index_z          = static_cast<usize>(relative_pos.z * divisions);
 
         // Clamp indices to ensure they are within bounds
-        index_x = std::clamp(index_x, 0ull, divisions - 1);
-        index_y = std::clamp(index_y, 0ull, divisions / 3 - 1); // Clamp for one-third divisions
-        index_z = std::clamp(index_z, 0ull, divisions - 1);
+        index_x = glm::clamp(index_x, 0ull, divisions - 1);
+        index_y = glm::clamp(index_y, 0ull, divisions_y - 1);
+        index_z = glm::clamp(index_z, 0ull, divisions - 1);
 
         // Get the index of the grid block in the 1D vector
-        usize block_index = index_x + index_y * divisions + index_z * (divisions / 3); // Adjust index calculation
-
-        assert(blocks.size() > block_index);
+        usize block_index = index_x + index_y * divisions + index_z * divisions * divisions_y;
 
         // Add the instance index to the corresponding grid block
         blocks[block_index].contained_instance_indices.push_back(i);
@@ -372,7 +362,7 @@ struct instanced_render_model_lod
 
     struct grid_block
     {
-      bool
+      HOT_PATH bool
       is_on_fwd_plane(primitives::aabb aabb, frust_plane plane) const
       {
         const auto extents = aabb.get_extents();
@@ -380,7 +370,7 @@ struct instanced_render_model_lod
         return -r <= plane.signed_dist_to_center(aabb.get_center());
       };
 
-      bool
+      HOT_PATH bool
       is_in_frustum(const camera_frust &frustum) const
       {
         const primitives::aabb box{min, max};
@@ -392,6 +382,7 @@ struct instanced_render_model_lod
 
       std::vector<u16> contained_instance_indices{};
       glm::vec3 min{}, max{};
+      bool currently_active = false;
     };
 
     std::vector<grid_block> blocks{};
@@ -400,10 +391,17 @@ struct instanced_render_model_lod
     debug_draw(const std::vector<instance_data> &_instances)
     {
       glLineWidth(5.f);
-      debug_overlay_t::draw_AABB(min, max, 0xf30f0fff, true);
+      /*
+      adding ugly offsets because of z-fighting
+      */
+      debug_overlay_t::draw_AABB(min - glm::vec3{1, 1, 1}, max + glm::vec3{1, 1, 1}, 0xf30f0f05, true);
       usize i = 0;
       for (const auto &block : blocks)
       {
+        if (!block.currently_active)
+        {
+          continue;
+        }
         u32 col = (i * 123445357) % 0xFFFFFF;      // Use a unique block index to generate a unique color
         col     = (col & 0xFFFFFF00) | 0x000000FF; // Set the alpha channel to fully opaque
         debug_overlay_t::draw_AABB(block.min, block.max, col, true);
@@ -425,14 +423,13 @@ struct instanced_render_model_lod
   struct lod_instance_data
   {
     instanced_static_render_model_lod model{};
-    usize instance_count{};
+    usize instance_count{}, actual_instance_count{};
     usize instace_base_index{};
   };
 
   std::array<lod_instance_data, (usize)lod::detail_level::lod_detail_enum_size> lod_models;
 
-  glm::vec3 instance_min{std::numeric_limits<f32>::max(), std::numeric_limits<f32>::max(), std::numeric_limits<f32>::max()};
-  glm::vec3 instance_max{std::numeric_limits<f32>::min(), std::numeric_limits<f32>::min(), std::numeric_limits<f32>::min()};
+  glm::vec3 instance_min{std::numeric_limits<f32>::max()}, instance_max{std::numeric_limits<f32>::min()};
 
   spacial_grid grid;
 
@@ -441,7 +438,7 @@ struct instanced_render_model_lod
              f32 shrink_factor)
   {
     int num_elements = array.size();
-    int remaining    = std::min(number_to_distribute / 2, 50); // Remaining amount to distribute
+    int remaining    = number_to_distribute; // Remaining amount to distribute
 
     // Start from the smallest value and work towards the largest
     for (int i = 0; i < num_elements; ++i)
@@ -520,29 +517,27 @@ struct instanced_render_model_lod
     std::vector<std::pair<f32, u16>> distance_index_pair;
     distance_index_pair.reserve(instance_count);
 
-    u32 rendered_blocks = 0;
+    u32 rendered_meshes = 0;
 
-    for (const auto &grid_block : grid.blocks)
+    for (auto &grid_block : grid.blocks)
     {
       if (grid_block.is_in_frustum(_frustum))
       {
-        rendered_blocks++;
+        grid_block.currently_active = true;
+        rendered_meshes += grid_block.contained_instance_indices.size();
         for (auto index : grid_block.contained_instance_indices)
         {
           f32 dist = glm::distance(_location, instance_data_buffer[index].world_position);
           distance_index_pair.emplace_back(dist, index);
         }
       }
+      else
+      {
+        grid_block.currently_active = false;
+      }
     }
 
-    printf("rendering blocks: %d out of %d\n", rendered_blocks, grid.blocks.size());
-
-    // for (u16 i = 0; i < (u16)instance_count; ++i)
-    // {
-    //   /*
-    //   for rotated models we should propably get the OBB of the object and get the closest point instead of just using position
-    //   */
-    // }
+    // printf("rendering blocks: %d out of %d\n", rendered_meshes, grid.blocks.size());
 
     /*
     sort by farthest first since index 0 in lod_models = lowest LOD model;
@@ -550,12 +545,30 @@ struct instanced_render_model_lod
     std::sort(std::execution::par_unseq, distance_index_pair.begin(), distance_index_pair.end(),
               [&](const std::pair<f32, u16> &_left, const std::pair<f32, u16> &_right) { return _left.first < _right.first; });
 
-    for (usize i = 0; i != instance_count; ++i)
+    /*
+    remove count of lowest LOD scale until temporary instance count matches what we actually want to render
+    do not change the distribution. so that we can render more high res models even if we render less in total
+    */
+
+    i32 current_lod_level = (i32)lod::detail_level::lod_detail_potato;
+    usize over_draw       = (usize)std::max(0, (i32)instance_count - (i32)rendered_meshes);
+    /*
+    @TODO: please optimize me
+    */
+    while (current_lod_level >= (i32)lod::detail_level::lod_detail_full /* 0 */)
     {
-      if (i >= distance_index_pair.size())
-      {
-        instance_mappings[i] = 0;
-      }
+      auto &ite                     = lod_models[current_lod_level];
+      const auto old_instance_count = (i32)ite.instance_count;
+      const i32 new_instance_count  = (usize)std::max(0, (i32)ite.instance_count - (i32)over_draw);
+      ite.model.set_instance_count(new_instance_count);
+      over_draw = (usize)std::max(0, (i32)over_draw - (old_instance_count - new_instance_count));
+      current_lod_level--;
+    }
+
+    // update the instance counts and base indices
+
+    for (usize i = 0; i != distance_index_pair.size(); ++i)
+    {
       instance_mappings[i] = distance_index_pair[i].second;
     }
   }
@@ -678,7 +691,7 @@ struct instanced_render_model_lod
     gpu_buffer.unbind();
     remap_buffer.unbind();
 
-    grid.debug_draw(this->instance_data_buffer);
+    // grid.debug_draw(this->instance_data_buffer);
   }
 };
 

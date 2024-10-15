@@ -14,8 +14,8 @@ isect_tri_aabb_sat(glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, glm::vec3 aabbExten
   float p1 = glm::dot(v1, axis);
   float p2 = glm::dot(v2, axis);
 
-  float r = aabbExtents.x * std::fabsf(glm::dot(glm::vec3(1, 0, 0), axis)) +
-            aabbExtents.y * std::fabsf(glm::dot(glm::vec3(0, 1, 0), axis)) + aabbExtents.z * std::fabsf(glm::dot(glm::vec3(0, 0, 1), axis));
+  float r = aabbExtents.x * fabsf(glm::dot(glm::vec3(1, 0, 0), axis)) + aabbExtents.y * fabsf(glm::dot(glm::vec3(0, 1, 0), axis)) +
+            aabbExtents.z * fabsf(glm::dot(glm::vec3(0, 0, 1), axis));
 
   float maxP = mmax(p0, mmax(p1, p2));
   float minP = mmin(p0, mmin(p1, p2));

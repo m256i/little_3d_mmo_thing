@@ -475,7 +475,7 @@ struct image_tex_lod
       if (new_size_x == 0 || new_size_y == 0)
       {
         std::cerr << "new dimensions are zero. skipping this LOD level." << std::endl;
-        assert(false);
+        // assert(false);
 
         continue;
       }

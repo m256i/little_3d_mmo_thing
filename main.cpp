@@ -147,7 +147,7 @@ main(i32 argc, char** argv) -> i32
 
   std::unordered_map<u32, voxel_grid_t> vgrids;
 
-  renderer::instanced_render_model_lod instanced_grass;
+  // renderer::instanced_render_model_lod instanced_grass;
 
   // lod_static_world_model_t LOD_tree{"lod_test_tree"};
 
@@ -161,7 +161,7 @@ main(i32 argc, char** argv) -> i32
   renderer::core::base_texture2d tex1, tex2;
   renderer::image_tex_lod asdasd;
 
-  renderer::static_render_model TREEYes;
+  renderer::static_render_model_lod TREEYes;
 
   asdasd.set_lod_level(lod::detail_level::lod_detail_mid);
 
@@ -251,13 +251,14 @@ void main()
 
             LOG(INFO) << "retarr";
 
-            instanced_grass.load_model_from_file("../data/trees/trees/9ard_ardenweald_largetree04.obj");
+            // instanced_grass.load_model_from_file("../data/trees/trees/9ard_ardenweald_largetree04.obj");
 
             LOG(INFO) << "loaded stupid test grass";
             // instanced_model.init_shader("../basic_model_instanced.vs", "../basic_model_instanced.fs");
 
             // TREEYes.load_from_file("../data/playe_models/D0510041.obj");
-            TREEYes.load_from_file("../data/trees/trees/9ard_ardenweald_largetree04.obj");
+            TREEYes.load_from_file("../data/duskwoodchapel.obj", lod::detail_level::lod_detail_full);
+            // TREEYes.load_from_file("../data/weapons/sword_1h_artifactfelomelorn_d_02blue.obj", lod::detail_level::lod_detail_full);
             TREEYes.update_location();
 
             skybox3d_model.load_model("../data/sky/3d/dalaranskybox.obj");
@@ -265,18 +266,16 @@ void main()
 
             static constexpr int county = 10;
 
-            instanced_grass.set_instance_count(county * county);
-
-            for (usize i = 0; i < county * county; ++i)
-            {
-              auto& instance_data          = instanced_grass.get_instance_data()[i];
-              instance_data.world_position = {(i % county) * 1500.f, -107.f, (i / county) * 1500.f};
-              instance_data.world_scale    = {15, 15, 15};
-              instanced_grass.apply_translation_at(i);
-            }
-            instanced_grass.buffer();
-
-            instanced_grass.initialize_culling_grid();
+            // instanced_grass.set_instance_count(county * county);
+            // for (usize i = 0; i < county * county; ++i)
+            // {
+            //   auto& instance_data          = instanced_grass.get_instance_data()[i];
+            //   instance_data.world_position = {(i % county) * 1500.f, -107.f, (i / county) * 1500.f};
+            //   instance_data.world_scale    = {15, 15, 15};
+            //   instanced_grass.apply_translation_at(i);
+            // }
+            // instanced_grass.buffer();
+            // instanced_grass.initialize_culling_grid();
 
             // LOD_tree.load_model("../data/trees/trees/9ard_ardenweald_largetree04.obj");
             // LOD_tree.init_shader();
@@ -341,7 +340,7 @@ void main()
               glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
             }
 
-            instanced_grass.draw(game_renderer.game_camera);
+            // instanced_grass.draw(game_renderer.game_camera);
 
             if (wireframe_view)
             {
@@ -355,7 +354,7 @@ void main()
 
             // TREEYes.update_location();
 
-            // TREEYes.draw(game_renderer.game_camera);
+            TREEYes.draw(game_renderer.game_camera);
             // TREEYes.translated_bbox.debug_draw_axes();
 
             // post_processor.bake(pp_pass1, renderings);

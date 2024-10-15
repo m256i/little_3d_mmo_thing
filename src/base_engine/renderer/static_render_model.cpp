@@ -22,6 +22,7 @@ struct temporary_mesh
   {
     glm::vec3 pos, normal;
     glm::vec2 texture_coords;
+    glm::vec2 light_map_texture_coords;
   };
 
   std::string texture_file_path;
@@ -344,7 +345,6 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
   for (const auto &mesh : meshes)
   {
     auto &tex = mesh.texture_file_path;
-
     i32 tex_sx, tex_sy, num_channels;
     u8 *texture_buf = stbi_load((directory + "/" + tex).c_str(), &tex_sx, &tex_sy, &num_channels, STBI_default);
 
@@ -356,7 +356,22 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
 
     pointers.push_back(texture_buf);
 
-    atlas.add_texture(fnv1a::hash(tex.c_str()), texture_buf, tex_sx, tex_sy, num_channels);
+    glm::vec2 min_uv = glm::vec2{std::numeric_limits<f32>::max()};
+    glm::vec2 max_uv = glm::vec2{std::numeric_limits<f32>::min()};
+
+    /*
+    calculate the minimum and maxium UV values to add repeats to the texture atlas
+    */
+    for (const auto &vert : mesh.vertices)
+    {
+      min_uv = glm::vec2{std::min(min_uv.x, vert.texture_coords.x), std::min(min_uv.y, vert.texture_coords.y)};
+      max_uv = glm::vec2{std::max(min_uv.x, vert.texture_coords.x), std::max(min_uv.y, vert.texture_coords.y)};
+    }
+
+    LOG(INFO) << "adding tex to atlas!";
+
+    atlas.add_texture(fnv1a::hash(tex.c_str()), texture_buf, tex_sx, tex_sy, num_channels, min_uv, max_uv);
+    LOG(INFO) << "addeded tex to atlas!";
 
     LOG(INFO) << "num channels: " << num_channels;
   }
@@ -371,8 +386,65 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
 
   auto atlas_pointer = atlas.generate();
 
+  core::textures::texture_atlas lighting_atlas{};
+
+  using namespace lighting::static_lighting;
+  std::vector<static_lighting_t::tri_shade_t> lightmap_textures{};
+
+  struct index_uv
+  {
+    usize tri_index;
+    glm::vec2 uv;
+  };
+
+  std::unordered_map<usize, index_uv> lightUV_vertex_map;
+
+  usize tri_index = 1;
+  for (auto &mesh : meshes)
+  {
+    for (usize index = 0; index <= mesh.indices.size() - 3; index += 3)
+    {
+      usize idx  = mesh.indices[index];
+      usize idx2 = mesh.indices[index + 1];
+      usize idx3 = mesh.indices[index + 2];
+
+      glm::vec3 triA = mesh.vertices[idx].pos;
+      glm::vec3 triB = mesh.vertices[idx2].pos;
+      glm::vec3 triC = mesh.vertices[idx3].pos;
+
+      static_lighting_t::triangle tri{triA, triB, triC, mesh.vertices[idx2].normal};
+
+      auto shade = lighting_thing.shade_triangle(tri);
+
+      lightUV_vertex_map[idx].uv        = shade.uvA;
+      lightUV_vertex_map[idx].tri_index = tri_index;
+
+      lightUV_vertex_map[idx2].uv        = shade.uvB;
+      lightUV_vertex_map[idx2].tri_index = tri_index;
+
+      lightUV_vertex_map[idx3].uv        = shade.uvC;
+      lightUV_vertex_map[idx3].tri_index = tri_index;
+
+      lightmap_textures.push_back(shade);
+      puts("add texture to atlas!");
+
+      lighting_atlas.add_texture(tri_index, (u8 *)lightmap_textures.back().pixel_data.data(), lightmap_textures.back().tex_w,
+                                 lightmap_textures.back().tex_h, 4);
+
+      tri_index++;
+    }
+  }
+
+  auto lighting_atlas_pointer = lighting_atlas.generate();
+
+  pipeline.load_texture_from_memory("texture_baked_light1", lighting_atlas_pointer, lighting_atlas.atlas_width, lighting_atlas.atlas_height,
+                                    lighting_atlas.num_channels);
+
   pipeline.load_texture_from_memory("texture_diffuse1", atlas_pointer, atlas.atlas_width, atlas.atlas_height, atlas.num_channels);
+
   pipeline.initialize();
+
+  puts("pipeline initialized");
 
   /*
   this is a memory leak free work environment!
@@ -391,13 +463,51 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
 
   for (auto &mesh : meshes)
   {
+    for (usize i = 0; i < mesh.indices.size() - 3; i += 3)
+    {
+      const auto vert1 = mesh.vertices[mesh.indices[i]];
+      const auto vert2 = mesh.vertices[mesh.indices[i + 1]];
+      const auto vert3 = mesh.vertices[mesh.indices[i + 2]];
+
+      auto UV1 = atlas.get_uv_map(fnv1a::hash(mesh.texture_file_path.c_str()), vert1.texture_coords.x, vert1.texture_coords.y);
+      auto UV2 = atlas.get_uv_map(fnv1a::hash(mesh.texture_file_path.c_str()), vert2.texture_coords.x, vert2.texture_coords.y);
+      auto UV3 = atlas.get_uv_map(fnv1a::hash(mesh.texture_file_path.c_str()), vert3.texture_coords.x, vert3.texture_coords.y);
+
+      atlas.add_debug_triangle(glm::vec2{UV1.first, UV1.second}, glm::vec2{UV2.first, UV2.second}, glm::vec2{UV3.first, UV3.second});
+    }
+
+    for (const u32 index : mesh.indices)
+    {
+      // LOG(INFO) << "for index: " << index << " triangle index: " << lightUV_vertex_map[index].tri_index
+      //           << " old uv: " << lightUV_vertex_map[index].uv.x << " " << lightUV_vertex_map[index].uv.y;
+
+      auto new_uvs =
+          lighting_atlas.get_uv_map(lightUV_vertex_map[index].tri_index, lightUV_vertex_map[index].uv.x, lightUV_vertex_map[index].uv.y);
+
+      // LOG(INFO) << "new uvs: " << new_uvs.first << " " << new_uvs.second;
+
+      mesh.vertices[index].light_map_texture_coords = glm::vec2{new_uvs.first, new_uvs.second};
+
+      pipeline.push_back_index(index + current_index_offset);
+    }
     for (auto &vert : mesh.vertices)
     {
 
+      // LOG(INFO) << "render UV for vert: " << vert.pos.x << " " << vert.pos.y << " " << vert.pos.z << " uvs: " << vert.texture_coords.x
+      //           << " " << vert.texture_coords.y;
+
       auto uv_map = atlas.get_uv_map(fnv1a::hash(mesh.texture_file_path.c_str()), vert.texture_coords.x, vert.texture_coords.y);
       /* add the atlas index to the UV here */
-      vert.texture_coords.x = uv_map.first;
+      // assert(std::fabs((1 - uv_map.first) - vert.texture_coords.x) < 0.0001);
+      // assert(std::fabs((1 - uv_map.second) - vert.texture_coords.y) < 0.0001);
+
+      vert.texture_coords.x = uv_map.first - 0.001;
       vert.texture_coords.y = uv_map.second;
+
+      // LOG(INFO) << "new uvs: " << vert.texture_coords.x << " " << vert.texture_coords.y;
+
+      // LOG(INFO) << "vert at position: x: " << vert.pos.x << " y: " << vert.pos.y << " z: " << vert.pos.z
+      //          << "has lightmap UVs: " << vert.light_map_texture_coords.x << " " << vert.light_map_texture_coords.y;
 
       temp_verts.push_back(vert.pos);
       pipeline.push_back_vertex<temporary_mesh::vert>(vert);
@@ -405,12 +515,19 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
 
       centroid += vert.pos;
     }
-    for (const u32 index : mesh.indices)
-    {
-      pipeline.push_back_index(index + current_index_offset);
-    }
+    // assert(false);
     current_index_offset += mesh.indices.size();
   }
+  LOG(INFO) << "done with lioghtmap shit";
+
+  pipeline.load_texture_from_memory("texture_diffuse1", atlas.debug_texture_pointer, atlas.atlas_width, atlas.atlas_height,
+                                    atlas.num_channels);
+
+  atlas_debug_tex.load_from_mem(atlas.debug_texture_pointer, atlas.atlas_width, atlas.atlas_height, 4);
+
+  // assert(false);
+
+  LOG(INFO) << "created debug atlas texture";
 
   centroid /= total_vertex_count;
 
@@ -447,35 +564,37 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
     bounding_box.maxs = dimensions.second;
   }
 
-  f32 threshold            = lod::model_detail_scales[(usize)_detail_level];
-  usize target_index_count = usize(pipeline.vbuf.indices.size() * threshold);
-  f32 target_error         = 0.15;
+  LOG(INFO) << "calculated OBB";
 
-  std::vector<u32> lod(pipeline.vbuf.indices.size());
-  f32 lod_error = 0.f;
-  lod.resize(meshopt_simplifySloppy(&lod[0], pipeline.vbuf.indices.data(), pipeline.vbuf.indices.size(),
-                                    (f32 *)std::launder(pipeline.vbuf.raw_buffer.data()), total_vertex_count,
-                                    pipeline.vbuf.get_total_attribute_stride(), target_index_count, target_error, &lod_error));
+  // f32 threshold            = lod::model_detail_scales[(usize)_detail_level];
+  // usize target_index_count = usize(pipeline.vbuf.indices.size() * threshold);
+  // f32 target_error         = 0.15;
 
-  pipeline.vbuf.indices = lod;
+  // std::vector<u32> lod(pipeline.vbuf.indices.size());
+  // f32 lod_error = 0.f;
+  // lod.resize(meshopt_simplifySloppy(&lod[0], pipeline.vbuf.indices.data(), pipeline.vbuf.indices.size(),
+  //                                   (f32 *)std::launder(pipeline.vbuf.raw_buffer.data()), total_vertex_count,
+  //                                   pipeline.vbuf.get_total_attribute_stride(), target_index_count, target_error, &lod_error));
 
-  std::vector<u32> optimized_indices(pipeline.vbuf.indices.size());
-  std::vector<u8> optimized_vertices(pipeline.vbuf.raw_buffer.size());
+  // pipeline.vbuf.indices = lod;
 
-  /* optimize the mesh */
-  meshopt_optimizeVertexCache(optimized_indices.data(), pipeline.vbuf.indices.data(), pipeline.vbuf.indices.size(), total_vertex_count);
+  // std::vector<u32> optimized_indices(pipeline.vbuf.indices.size());
+  // std::vector<u8> optimized_vertices(pipeline.vbuf.raw_buffer.size());
 
-  std::vector<u32> optimized_indices2(optimized_indices.size());
+  // /* optimize the mesh */
+  // meshopt_optimizeVertexCache(optimized_indices.data(), pipeline.vbuf.indices.data(), pipeline.vbuf.indices.size(), total_vertex_count);
 
-  meshopt_optimizeOverdraw(optimized_indices2.data(), optimized_indices.data(), optimized_indices.size(),
-                           (f32 *)std::launder(pipeline.vbuf.raw_buffer.data()), total_vertex_count,
-                           pipeline.vbuf.get_total_attribute_stride(), 1.15f);
+  // std::vector<u32> optimized_indices2(optimized_indices.size());
 
-  meshopt_optimizeVertexFetch(optimized_vertices.data(), optimized_indices.data(), optimized_indices.size(),
-                              pipeline.vbuf.raw_buffer.data(), total_vertex_count, pipeline.vbuf.get_total_attribute_stride());
+  // meshopt_optimizeOverdraw(optimized_indices2.data(), optimized_indices.data(), optimized_indices.size(),
+  //                          (f32 *)std::launder(pipeline.vbuf.raw_buffer.data()), total_vertex_count,
+  //                          pipeline.vbuf.get_total_attribute_stride(), 1.15f);
 
-  pipeline.vbuf.indices    = optimized_indices;
-  pipeline.vbuf.raw_buffer = optimized_vertices;
+  // meshopt_optimizeVertexFetch(optimized_vertices.data(), optimized_indices.data(), optimized_indices.size(),
+  //                             pipeline.vbuf.raw_buffer.data(), total_vertex_count, pipeline.vbuf.get_total_attribute_stride());
+
+  // pipeline.vbuf.indices    = optimized_indices;
+  // pipeline.vbuf.raw_buffer = optimized_vertices;
 
   /*
   TODO: overdraw optimization
@@ -483,6 +602,11 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
 
   atlas.destroy();
   pipeline.setup_drawbuffer();
+
+  /*
+
+  */
+  LOG(INFO) << "loaded model succesfully!";
 }
 
 u0

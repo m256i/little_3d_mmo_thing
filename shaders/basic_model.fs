@@ -5,8 +5,9 @@ in vec2 TexCoords;
 in vec3 Normal;
 in vec3 Pos;
 in float camera_distance;
+in vec2 LightMapTexCoords;
 
-uniform sampler2D texture_diffuse1, texture_diffuse2;
+uniform sampler2D texture_diffuse1, texture_baked_light1;
 
 const float FOG_DISTANCE = 100;
 const vec4 FOG_COLOR     = vec4(104, 83, 126, 255) / 255.f;
@@ -21,7 +22,7 @@ main()
 
   float dist = camera_distance;
 
-  vec2 uv = vec2(1, 1) - TexCoords;
+  vec2 uv = vec2(TexCoords.x, TexCoords.y);
 
   vec3 col      = vec3(0.3, 0.1, 0.1);
   vec3 lightpos = vec3(100.0, 150.0, 0.0);
@@ -38,5 +39,6 @@ main()
   vec4 fogColor = FOG_COLOR * (1 - fog_mask);
   fogColor      = clamp(fogColor, vec4(0, 0, 0, 0), vec4(1, 1, 1, 1));
 
-  FragColor = textColor1 + fogColor;
+  FragColor = (textColor1 + texture(texture_baked_light1, LightMapTexCoords) * 0.0002) + fogColor;
+  // FragColor = (texture(texture_baked_light1, LightMapTexCoords)) + fogColor;
 }

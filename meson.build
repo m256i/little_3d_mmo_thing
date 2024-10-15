@@ -50,7 +50,9 @@ windows_link_args = [
 ]
 
 linux_link_args = [
-
+  '-lassimp',
+  '-lGL',
+  '-lglfw3',
 ]
 
 applied_link_args = []
@@ -68,7 +70,7 @@ executable(
   [sources],
   include_directories : [include_path, headers_path],
   dependencies : [meshopt_target],
-  cpp_args : ['-std=c++23', '-O3', '-g','-march=native', '-fno-rtti', useless_warnings],
-  link_args : [windows_link_args],
+  cpp_args : ['-fsanitize=address', '-std=c++23', '-O3', '-g','-march=native', '-fno-rtti', useless_warnings],
+  link_args : [applied_link_args],
   install : true
 )

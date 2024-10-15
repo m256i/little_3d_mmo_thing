@@ -276,7 +276,7 @@ convex_hull_t::simplify()
     glm::vec3 normal = glm::cross(p2 - p1, p3 - p1);
     normal           = glm::normalize(normal);
     f32 distance     = glm::dot(normal, point - p1);
-    return std::fabsf(distance);
+    return fabsf(distance);
   };
 
   auto simplified = reduce(points, 30.0f);

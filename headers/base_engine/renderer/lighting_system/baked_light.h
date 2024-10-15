@@ -1,44 +1,121 @@
 #pragma once
 
-#include "../mesh.h"
-#include "../shader.h"
-#include "headers/base_engine/renderer/shader.h"
+#include <common.h>
+#include <glm/glm.hpp>
 
-struct point_light_t
+namespace renderer::lighting::static_lighting
+{
+
+struct static_point_light_t
 {
   glm::vec3 position;
+  u32 color;
+  f32 radius;
 };
 
 struct static_lighting_t
 {
-  bool
-  bake_lights_to_texture(mesh_t& _mesh, std::vector<u8>& _out_tex_buffer)
+  std::vector<static_point_light_t> light_sources;
+
+  struct triangle
   {
-    for (const auto& texture : _mesh.textures)
+    glm::vec3 a, b, c, normal;
+  };
+
+  struct triangle2d
+  {
+    glm::vec2 a, b, c;
+  };
+
+  struct tri_shade_t
+  {
+    std::vector<u32> pixel_data;
+    usize tex_w, tex_h;
+    glm::vec2 uvA, uvB, uvC;
+  };
+
+  glm::vec3
+  trimap(const triangle& _tri, glm::vec2 _uv)
+  {
+    return (_tri.a + ((_tri.c - _tri.a) - (_tri.c - _tri.b) * _uv.y) * _uv.x);
+  }
+
+  glm::vec2
+  trimap(const triangle2d& _tri, glm::vec2 _uv)
+  {
+    return (_tri.a + ((_tri.c - _tri.a) - (_tri.c - _tri.b) * _uv.y) * _uv.x);
+  }
+
+  tri_shade_t
+  shade_triangle(const triangle& _tri)
+  {
+    tri_shade_t out;
+
+    usize tex_w = 20, tex_h = 20;
+    out.pixel_data.resize(tex_w * tex_h);
+
+    out.tex_w = tex_w;
+    out.tex_h = tex_h;
+
+    static auto texture_at = [&](usize x, usize y) -> u32& { return (out.pixel_data[x * tex_w + y]); };
+
+    out.uvC = glm::vec2(0, 0);
+    out.uvB = glm::vec2(0, 1);
+    out.uvA = glm::vec2(1, 0);
+
+    const auto& tri_norm = _tri.normal;
+
+    puts("asdasd");
+
+    /*
+    we iterate over every pixel of the texture and find the corresponding UV point of the triangle
+    */
+
+    static constexpr auto rgba_to_vec4 = [](u32 _col)
     {
-      u32 fbo;
-      glGenFramebuffers(1, &fbo);
-      glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+      return glm::vec4{(f32)((_col & 0xff000000) >> 24) / 255.f, (f32)((_col & 0x00ff0000) >> 16) / 255.f,
+                       (f32)((_col & 0x0000ff00) >> 8) / 255.f, (f32)((_col & 0x000000ff)) / 255.f};
+    };
 
-      u32 out_texture_id{};
-      glGenTextures(1, &out_texture_id);
-      glBindTexture(GL_TEXTURE_2D, out_texture_id);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture.width, texture.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, out_texture_id, 0);
+    static constexpr auto vec4_to_rgba = [](glm::vec4 _col)
+    {
+      const u8 r = (u8)(_col.r * 255);
+      const u8 g = (u8)(_col.g * 255);
+      const u8 b = (u8)(_col.b * 255);
+      const u8 a = (u8)(_col.a * 255);
+      return (u32)((u32)(r << 24) | (u32)(g << 16) | (u32)(b << 8) | (u32)(a));
+    };
 
-      if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    for (usize texX = 0; texX < tex_w; texX++)
+    {
+      for (usize texY = 0; texY < tex_h; texY++)
       {
-        LOG(INFO) << "failed to generate lighting texture buffer";
-        return false;
+        auto& current_pixel = texture_at(texX, texY);
+        glm::vec2 tex_uv((f32)texX / (f32)tex_w, (f32)texY / (f32)tex_h);
+        const auto vertex_coord = trimap(_tri, tex_uv); // map texture pixel to point on triangle
+        glm::vec4 color_accum{};
+
+        /*
+        accumulate every light source
+        */
+        for (auto& light_source : light_sources)
+        {
+          f32 brightness = glm::dot(glm::normalize(vertex_coord - light_source.position), tri_norm);
+          brightness     = std::clamp(brightness, 0.f, 1.f);
+          // LOG(INFO) << "brightness for current vert: " << brightness;
+          f32 amplitude = 1.f / (std::pow(glm::distance(vertex_coord, light_source.position), 2.5f) + FLT_EPSILON);
+          amplitude     = std::clamp(amplitude, 0.f, 1.f);
+          // LOG(INFO) << "amplitude for current vert: " << amplitude;
+          color_accum += rgba_to_vec4(light_source.color) * brightness * amplitude * 1000.f;
+        }
+
+        // current_pixel = vec4_to_rgba(glm::vec4(tri_norm, 1.f));
+
+        current_pixel = vec4_to_rgba(color_accum);
       }
-      glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-      basic_shader_t baking_shader{"baking_shader", "../basic_model.vs", "../light_baking_shader.fs"};
-
-      _out_tex_buffer.resize(texture.width * texture.height * 4);
-      glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-      glReadPixels(0, 0, texture.width, texture.height, GL_RGBA, GL_UNSIGNED_BYTE, _out_tex_buffer.data());
-      glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
+    return out;
   }
 };
+
+} // namespace renderer::lighting::static_lighting

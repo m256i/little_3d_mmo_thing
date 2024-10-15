@@ -138,13 +138,13 @@ voxel_grid_t::find(const glm::vec3& _position)
     return nullptr;
   }
 
-  f32 x_length = std::fabsf(bbox.max.x - bbox.min.x);
-  f32 y_length = std::fabsf(bbox.max.y - bbox.min.y);
-  f32 z_length = std::fabsf(bbox.max.z - bbox.min.z);
+  f32 x_length = fabsf(bbox.max.x - bbox.min.x);
+  f32 y_length = fabsf(bbox.max.y - bbox.min.y);
+  f32 z_length = fabsf(bbox.max.z - bbox.min.z);
 
-  f32 row_distance    = std::fabsf(std::fabsf(_position.x) - std::fabsf(bbox.min.x));
-  f32 story_distance  = std::fabsf(std::fabsf(_position.y) - std::fabsf(bbox.min.y));
-  f32 column_distance = std::fabsf(std::fabsf(_position.z) - std::fabsf(bbox.min.z));
+  f32 row_distance    = fabsf(fabsf(_position.x) - fabsf(bbox.min.x));
+  f32 story_distance  = fabsf(fabsf(_position.y) - fabsf(bbox.min.y));
+  f32 column_distance = fabsf(fabsf(_position.z) - fabsf(bbox.min.z));
 
   usize row_index    = (usize)(row_distance / (x_length / count_rows));
   usize story_index  = (usize)(story_distance / (y_length / count_stories));

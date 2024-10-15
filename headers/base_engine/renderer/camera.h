@@ -55,7 +55,7 @@ struct render_camera_t
 
   constexpr static float default_yaw         = -90.0f;
   constexpr static float default_pitch       = 0.0f;
-  constexpr static float default_speed       = 100.5f;
+  constexpr static float default_speed       = 6.5f;
   constexpr static float default_sensitivity = 0.1f;
   constexpr static float default_fov         = 90.0f;
 

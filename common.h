@@ -19,6 +19,16 @@ static constexpr bool IS_DEBUG_BUILD = true;
 static constexpr bool IS_DEBUG_BUILD = true;
 #endif
 
+/*
+explictly define functions that are run rarely/once frame as OFFLINE so that we can signalize that this function doesnt
+need much optimization
+*/
+#define OFFLINE
+/*
+explictly define functions that are run every frame as HOT_PATH to signalize that the function needs to be fast
+*/
+#define HOT_PATH
+
 using b8 = char;
 using b0 = bool;
 using u0 = void;

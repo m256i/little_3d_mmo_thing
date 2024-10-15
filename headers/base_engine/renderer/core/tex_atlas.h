@@ -5,6 +5,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <glm/glm.hpp>
 
 namespace renderer::core::textures
 {
@@ -42,12 +43,12 @@ grow_and_pack_textures(std::vector<stbrp_rect> &rects, std::pair<i32, i32> initi
 
   while (!try_pack_textures(atlas_width, atlas_height, rects))
   {
-    atlas_width *= 1.2;
-    atlas_height *= 1.2;
-    LOG(INFO) << "increased atlas size to: " << next_multiple_of_4(atlas_width) << " x " << next_multiple_of_4(atlas_height);
+    atlas_width  = next_multiple_of_4(atlas_width * 1.2);
+    atlas_height = next_multiple_of_4(atlas_height * 1.2);
+    LOG(INFO) << "increased atlas size to: " << atlas_width << " x " << atlas_height;
   }
 
-  return {next_multiple_of_4(atlas_width), next_multiple_of_4(atlas_height)};
+  return {atlas_width, atlas_height};
 }
 
 inline i32
@@ -81,26 +82,45 @@ struct texture_atlas
     usize texture_width, texture_height;
     u8 channel_count;
     stbrp_rect rect;
+    glm::vec2 min_uv;
+    glm::vec2 max_uv;
   };
 
   u0
-  add_texture(u32 _name_hash, const u8 *const _ptr, usize _tex_w, usize _tex_h, u32 _channel_count)
+  add_texture(u32 _name_hash, const u8 *const _ptr, usize _tex_w, usize _tex_h, u32 _channel_count, glm::vec2 _min_uv = {0, 0},
+              glm::vec2 _max_uv = {1, 1})
   {
     assert(_ptr);
     assert(_name_hash);
 
+    /*
+    @TODO: the issue is somewhere here clearly! and also in the UV remapping code
+    */
+
+    _min_uv = glm::vec2{std::floor(_min_uv.x) - 1.f, std::floor(_min_uv.y) - 1.f};
+    _max_uv = glm::vec2{std::ceil(_max_uv.x) + 1.f, std::ceil(_max_uv.y) + 1.f};
+
     stbrp_rect new_rect;
     new_rect.id = _name_hash;
-    new_rect.w  = _tex_w;
-    new_rect.h  = _tex_h;
+
+    /*
+    make tiling textures work
+    */
+    new_rect.w = _tex_w * u32(std::abs(_min_uv.x) + std::abs(_max_uv.x));
+    new_rect.h = _tex_h * u32(std::abs(_min_uv.y) + std::abs(_max_uv.y));
 
     assert(_channel_count > 0);
 
-    texture_mappings[_name_hash] = input_texture{
-        .data_pointer = _ptr, .texture_width = _tex_w, .texture_height = _tex_h, .channel_count = (u8)_channel_count, .rect = new_rect};
+    texture_mappings[_name_hash] = input_texture{.data_pointer   = _ptr,
+                                                 .texture_width  = _tex_w,
+                                                 .texture_height = _tex_h,
+                                                 .channel_count  = (u8)_channel_count,
+                                                 .rect           = new_rect,
+                                                 .min_uv         = _min_uv,
+                                                 .max_uv         = _max_uv};
   }
 
-  u8 *
+  [[nodiscard]] u8 *
   generate()
   {
     std::vector<stbrp_rect> rects;
@@ -134,6 +154,7 @@ struct texture_atlas
     }
 
     texture_pointer = (u8 *)malloc(atlas_width * atlas_height * num_channels);
+    std::memset(texture_pointer, 0, atlas_width * atlas_height * num_channels);
 
     LOG(INFO) << "allocated texture pointer size: " << (atlas_width * atlas_height * num_channels);
 
@@ -143,17 +164,30 @@ struct texture_atlas
     {
       const u8 *const texture_data = tex.second.data_pointer;
       const i32 tex_channels       = tex.second.channel_count;
-      const i32 texture_width      = tex.second.texture_width;
-      const i32 texture_height     = tex.second.texture_height;
 
-      const auto &rect = tex.second.rect;
+      const i32 texture_repeats_x = std::abs(tex.second.min_uv.x - tex.second.max_uv.x);
+      const i32 texture_repeats_y = std::abs(tex.second.min_uv.y - tex.second.max_uv.y);
+
+      // LOG(INFO) << "texture_repeats_x " << texture_repeats_x;
+      // LOG(INFO) << "texture_repeats_y " << texture_repeats_y;
+
+      const i32 texture_width  = tex.second.texture_width * std::max(texture_repeats_x, 1);
+      const i32 texture_height = tex.second.texture_height * std::max(texture_repeats_y, 1);
+
+      const i32 adjusted_rect_x = atlas_width - texture_width;
+      const auto &rect          = tex.second.rect;
 
       for (i32 y = 0; y < texture_height; ++y)
       {
         for (i32 x = 0; x < texture_width; ++x)
         {
-          i32 src_index = (y * texture_width + x) * tex.second.channel_count;
-          i32 dst_x     = rect.x + x;
+          i32 src_index =
+              ((y % tex.second.texture_height) * tex.second.texture_width + (x % tex.second.texture_width)) * tex.second.channel_count;
+
+          // LOG(INFO) << "source index" << src_index;
+          //  i32 dst_x     = rect.x + x;
+          i32 dst_x = rect.x + ((texture_width)-1 - x);
+          // i32 dst_y = rect.y + ((texture_height)-1 - y);
           i32 dst_y     = rect.y + y;
           i32 dst_index = (dst_y * atlas_width + dst_x) * 4;
 
@@ -165,7 +199,91 @@ struct texture_atlas
       }
     }
 
+    LOG(INFO) << "generating done!";
+
+    debug_texture_pointer = (u8 *)malloc(atlas_width * atlas_height * num_channels);
+    std::memset(debug_texture_pointer, 0, atlas_width * atlas_height * num_channels);
+    std::memcpy(debug_texture_pointer, texture_pointer, atlas_width * atlas_height * num_channels);
+
     return texture_pointer;
+  }
+
+  u0
+  add_debug_triangle(glm::vec2 triA, glm::vec2 triB, glm::vec2 triC)
+  {
+    assert(debug_texture_pointer);
+    add_triangle_edges(debug_texture_pointer, glm::ivec2(atlas_width, atlas_height), triA, triB, triC);
+  }
+
+  u8 *
+  get_debug_texture()
+  {
+    return debug_texture_pointer;
+  }
+
+  // Helper function to draw a line between two points using Bresenham's algorithm
+  void
+  draw_line(u8 *image_buffer, glm::ivec2 image_size, glm::ivec2 start, glm::ivec2 end, int num_channels)
+  {
+    int x0 = start.x, y0 = start.y;
+    int x1 = end.x, y1 = end.y;
+
+    int dx = std::abs(x1 - x0);
+    int dy = std::abs(y1 - y0);
+
+    int sx = (x0 < x1) ? 1 : -1;
+    int sy = (y0 < y1) ? 1 : -1;
+
+    int err = dx - dy;
+
+    while (true)
+    {
+      // Ensure pixel is inside image bounds
+      if (x0 >= 0 && x0 < image_size.x && y0 >= 0 && y0 < image_size.y)
+      {
+        // Calculate the index in the image buffer
+        int index = (y0 * image_size.x + x0) * num_channels;
+
+        // Invert the color of the pixel (RGB channels only)
+        image_buffer[index + 0] = 255 - image_buffer[index + 0]; // Red channel
+        image_buffer[index + 1] = 255 - image_buffer[index + 1]; // Green channel
+        image_buffer[index + 2] = 255 - image_buffer[index + 2]; // Blue channel
+                                                                 // Alpha channel (image_buffer[index + 3]) remains unchanged
+      }
+
+      if (x0 == x1 && y0 == y1) break;
+
+      int e2 = 2 * err;
+
+      if (e2 > -dy)
+      {
+        err -= dy;
+        x0 += sx;
+      }
+
+      if (e2 < dx)
+      {
+        err += dx;
+        y0 += sy;
+      }
+    }
+  }
+
+  // Function to map UV coordinates and draw lines on the texture
+  void
+  add_triangle_edges(u8 *image_buffer, glm::ivec2 image_size, glm::vec2 triA, glm::vec2 triB, glm::vec2 triC)
+  {
+    const int num_channels = 4; // Assuming RGBA format with 4 channels
+
+    // Convert UV coordinates (0,0)-(1,1) to pixel coordinates (image space)
+    glm::ivec2 pixelA = glm::ivec2(triA * glm::vec2(image_size));
+    glm::ivec2 pixelB = glm::ivec2(triB * glm::vec2(image_size));
+    glm::ivec2 pixelC = glm::ivec2(triC * glm::vec2(image_size));
+
+    // Draw the edges of the triangle by connecting the vertices
+    draw_line(image_buffer, image_size, pixelA, pixelB, num_channels); // Line AB
+    draw_line(image_buffer, image_size, pixelB, pixelC, num_channels); // Line BC
+    draw_line(image_buffer, image_size, pixelC, pixelA, num_channels); // Line CA
   }
 
   std::pair<f32, f32>
@@ -174,35 +292,70 @@ struct texture_atlas
     assert(texture_mappings.contains(_texture_name_hash));
     const auto &texture_map = texture_mappings[_texture_name_hash];
 
-    const f32 rect_pack_offset_x     = texture_map.rect.x;
-    const f32 rect_pack_offset_y     = texture_map.rect.y;
-    const f32 rect_pack_dimensions_x = texture_map.rect.w;
-    const f32 rect_pack_dimensions_y = texture_map.rect.h;
-
-    const f32 u_offset = (f32)(rect_pack_offset_x) / atlas_width;
-    const f32 v_offset = (f32)(rect_pack_offset_y) / atlas_height;
-    const f32 u_scale  = (f32)(rect_pack_dimensions_x) / atlas_width;
-    const f32 v_scale  = (f32)(rect_pack_dimensions_y) / atlas_height;
+    // LOG(INFO) << "get uv map for texture: " << _texture_name_hash << " u" << u << " v" << v;
 
     /*
-    fix for tiling textures
-    @FIXME: fix the fix for tiling textures
+    BUG#1:  atlas_width and height are oversized because the texture has to be a multiple of 4
+
     */
 
-    //  Handle cases where the value is below - 1
-    while (u < 0)
+    /*
+    the offset of the mapped texture in the atlas
+    */
+    const f32 rect_pack_offset_x = texture_map.rect.x;
+    const f32 rect_pack_offset_y = texture_map.rect.y;
+
+    /*
+    the size of a single texture
+    */
+    const f32 rect_pack_dimensions_x = texture_map.texture_width;
+    const f32 rect_pack_dimensions_y = texture_map.texture_height;
+
+    /*
+    the UV coordinate offsets passed to shader basically just raw offsets normalized
+    */
+    const f32 u_offset = (f32)(rect_pack_offset_x) / atlas_width;
+    const f32 v_offset = (f32)(rect_pack_offset_y) / atlas_height;
+
+    /*
+    the scale of the new UVs to scale the old UVs with
+     */
+    const f32 u_scale = (f32)(rect_pack_dimensions_x) / atlas_width;
+    const f32 v_scale = (f32)(rect_pack_dimensions_y) / atlas_height;
+
+    // LOG(INFO) << "atlas x: " << atlas_width << "atlas y: " << atlas_height;
+    LOG(INFO) << "u_scale: " << u_scale << " v_scale: " << v_scale;
+    LOG(INFO) << "u_offset: " << u_offset << " v_offset: " << v_offset;
+
+    LOG(INFO) << "with UVminY: " << texture_map.min_uv.y;
+    LOG(INFO) << "with UVminX: " << texture_map.min_uv.x;
+
+    LOG(INFO) << "original U: " << u;
+    LOG(INFO) << "original V: " << v;
+
+    if (texture_map.min_uv.x < 0)
     {
-      u += 1.0f; // Keep adding 1 until u is non-negative
+      u += (std::abs(std::floor(texture_map.min_uv.x)));
     }
-    while (v < 0)
+    else if (texture_map.min_uv.x > 0)
     {
-      v += 1.0f; // Keep adding 1 until v is non-negative
+      u -= (std::ceil(texture_map.min_uv.x));
     }
 
-    u = std::fmodf(u, 1.0f + std::numeric_limits<f32>::epsilon());
-    v = std::fmodf(v, 1.0f + std::numeric_limits<f32>::epsilon());
+    if (texture_map.min_uv.y < 0)
+    {
+      v += std::abs(std::floor(texture_map.min_uv.y));
+    }
+    else if (texture_map.min_uv.y > 0)
+    {
+      v -= std::ceil(texture_map.min_uv.y);
+    }
 
-    return {1 - (u * u_scale + u_offset), 1 - (v * v_scale + v_offset)};
+    LOG(INFO) << "adjusted U: " << u;
+    LOG(INFO) << "adjusted V: " << v;
+    LOG(INFO) << " mapped u: " << u << " v: " << v << " to " << (u * u_scale + u_offset) << " " << (v * v_scale + v_offset);
+
+    return {(u * u_scale + u_offset), (v * v_scale + v_offset)};
   }
 
   u0
@@ -217,7 +370,7 @@ struct texture_atlas
 
   std::unordered_map<u32, input_texture> texture_mappings;
 
-  u8 *texture_pointer{nullptr};
+  u8 *texture_pointer{nullptr}, *debug_texture_pointer{nullptr};
   usize atlas_width, atlas_height;
   constexpr static u32 num_channels = 4; // texture atlases will always have 4 channels
 };
