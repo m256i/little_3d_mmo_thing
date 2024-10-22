@@ -348,9 +348,9 @@ struct instanced_render_model_lod
         usize index_z          = static_cast<usize>(relative_pos.z * divisions);
 
         // Clamp indices to ensure they are within bounds
-        index_x = glm::clamp(index_x, 0ull, divisions - 1);
-        index_y = glm::clamp(index_y, 0ull, divisions_y - 1);
-        index_z = glm::clamp(index_z, 0ull, divisions - 1);
+        index_x = glm::clamp(index_x, 0ul, divisions - 1);
+        index_y = glm::clamp(index_y, 0ul, divisions_y - 1);
+        index_z = glm::clamp(index_z, 0ul, divisions - 1);
 
         // Get the index of the grid block in the 1D vector
         usize block_index = index_x + index_y * divisions + index_z * divisions * divisions_y;

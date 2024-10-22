@@ -187,8 +187,6 @@ struct render_pipeline
     draw_function = [&]()
     {
       internal_shader.use();
-
-      puts("shader stuff");
       for (const auto& uniform_name : uniform_names)
       {
         /*
@@ -242,8 +240,6 @@ struct render_pipeline
         }
       }
 
-      puts("binding input textures");
-
       u32 texidx = 0;
       for (const auto& shader_ipt_texture : texture_cache)
       {
@@ -264,8 +260,6 @@ struct render_pipeline
       {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
       }
-
-      puts("drawing vbuffer");
 
       vbuf.draw();
     };

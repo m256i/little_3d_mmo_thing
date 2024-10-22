@@ -97,8 +97,8 @@ struct texture_atlas
     @TODO: the issue is somewhere here clearly! and also in the UV remapping code
     */
 
-    _min_uv = glm::vec2{std::floor(_min_uv.x) - 1.f, std::floor(_min_uv.y) - 1.f};
-    _max_uv = glm::vec2{std::ceil(_max_uv.x) + 1.f, std::ceil(_max_uv.y) + 1.f};
+    _min_uv = glm::vec2{std::floor(_min_uv.x), std::floor(_min_uv.y)};
+    _max_uv = glm::vec2{std::ceil(_max_uv.x), std::ceil(_max_uv.y)};
 
     stbrp_rect new_rect;
     new_rect.id = _name_hash;
@@ -106,8 +106,8 @@ struct texture_atlas
     /*
     make tiling textures work
     */
-    new_rect.w = _tex_w * u32(std::abs(_min_uv.x) + std::abs(_max_uv.x));
-    new_rect.h = _tex_h * u32(std::abs(_min_uv.y) + std::abs(_max_uv.y));
+    new_rect.w = _tex_w * (u32(glm::distance(_min_uv.x, _max_uv.x)));
+    new_rect.h = _tex_h * (u32(glm::distance(_min_uv.y, _max_uv.y)));
 
     assert(_channel_count > 0);
 

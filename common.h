@@ -279,32 +279,3 @@ struct ct_string
   static constexpr usize size = TSize;
   const std::array<TCharArr, TSize> data;
 };
-
-template <typename TType>
-struct error_t
-{
-  TType value;
-  bool has_error{true};
-
-  [[gnu::always_inline]] decltype(auto)
-  get() noexcept
-  {
-    if constexpr (IS_DEBUG_BUILD)
-    {
-      if (has_error)
-      {
-#ifdef _WIN32
-        MessageBoxA(nullptr, "error_t: was set", 0, 0);
-        std::terminate();
-        __builtin_unreachable();
-#endif
-      }
-      else
-      {
-        return (value);
-      }
-    }
-  }
-  /* if we set this to true by default we avoid alot of stupid things */
-  /* essentially we assume that things are going to shit by default */
-};

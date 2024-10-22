@@ -223,23 +223,23 @@ main(i32 argc, char** argv) -> i32
 
             game_renderer.update_frame_buffer(_window);
 
-            post_processor.initialize(1920, 1080); // @FIXME: cleanup
-            pp_pass1 = post_processor.add_post_pass(
-                R"(
-#version 430 core
-out vec4 FragColor;
-in vec2 TexCoords;
-uniform sampler2D texture_diffuse;
+            //             post_processor.initialize(1920, 1080); // @FIXME: cleanup
+            //             pp_pass1 = post_processor.add_post_pass(
+            //                 R"(
+            // #version 430 core
+            // out vec4 FragColor;
+            // in vec2 TexCoords;
+            // uniform sampler2D texture_diffuse;
 
-void main()
-{
-  vec3 col =vec3(1,1,1) - texture(texture_diffuse, TexCoords).rgb;
-  //float avg = (col.r + col.g + col.b) / 3;
- // FragColor = vec4(1-avg,1-avg,1-avg, 1);
-  FragColor = vec4(col, 1);
-}
+            // void main()
+            // {
+            //   vec3 col =vec3(1,1,1) - texture(texture_diffuse, TexCoords).rgb;
+            //   //float avg = (col.r + col.g + col.b) / 3;
+            //  // FragColor = vec4(1-avg,1-avg,1-avg, 1);
+            //   FragColor = vec4(col, 1);
+            // }
 
-)");
+            // )");
 
             // plane.load_shader();
             // plane.initialize(0);
@@ -307,7 +307,7 @@ void main()
 
             process_input(_window);
 
-            post_processor.update_size(1920, 1080);
+            // post_processor.update_size(1920, 1080);
 
             f32 currentFrame = (f32)glfwGetTime();
             deltaTime        = currentFrame - lastFrame;

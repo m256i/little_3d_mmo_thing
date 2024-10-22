@@ -83,6 +83,7 @@ struct static_lighting_t
       const u8 g = (u8)(_col.g * 255);
       const u8 b = (u8)(_col.b * 255);
       const u8 a = (u8)(_col.a * 255);
+      
       return (u32)((u32)(r << 24) | (u32)(g << 16) | (u32)(b << 8) | (u32)(a));
     };
 

@@ -2,7 +2,6 @@
 #include <exception>
 #include <float.h>
 #include <limits>
-#include <sal.h>
 #include <unordered_map>
 #include <vector>
 #include <glm/vec3.hpp>

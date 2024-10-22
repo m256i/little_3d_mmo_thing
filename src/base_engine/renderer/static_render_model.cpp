@@ -13,6 +13,7 @@
 #include <stb_image.h>
 
 #include <meshoptimizer.h>
+#include <filesystem>
 
 #include <base_engine/renderer/core/math.h>
 
@@ -327,11 +328,12 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
 
   if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
   {
+
     LOG(INFO) << "[model] : error: '" << importer.GetErrorString() << "'";
     return;
   }
 
-  const std::string directory = std::string{_path.substr(0, _path.find_last_of('/'))};
+  std::string directory = std::string{_path.substr(0, _path.find_last_of('/'))};
 
   std::vector<temporary_mesh> meshes;
   process_node(scene->mRootNode, scene, meshes);
@@ -345,12 +347,23 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
   for (const auto &mesh : meshes)
   {
     auto &tex = mesh.texture_file_path;
+
+    std::string full_path = directory + tex;
+
+    usize lc1 = full_path.find("\\");
+    while (lc1 != std::string::npos)
+    {
+      full_path.replace(lc1, 1, "/");
+      lc1 = full_path.find("\\", lc1);
+    }
+
     i32 tex_sx, tex_sy, num_channels;
-    u8 *texture_buf = stbi_load((directory + "/" + tex).c_str(), &tex_sx, &tex_sy, &num_channels, STBI_default);
+    u8 *texture_buf = stbi_load(full_path.c_str(), &tex_sx, &tex_sy, &num_channels, STBI_default);
 
     if (!texture_buf)
     {
-      LOG(INFO) << "failed to load texture: " << (directory + "/" + tex);
+      LOG(INFO) << "failed to load texture: " << (directory + tex);
+      LOG(INFO) << "working directory of executable: " << std::filesystem::current_path();
       assert(false);
     }
 
@@ -365,14 +378,13 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
     for (const auto &vert : mesh.vertices)
     {
       min_uv = glm::vec2{std::min(min_uv.x, vert.texture_coords.x), std::min(min_uv.y, vert.texture_coords.y)};
-      max_uv = glm::vec2{std::max(min_uv.x, vert.texture_coords.x), std::max(min_uv.y, vert.texture_coords.y)};
+      max_uv = glm::vec2{std::max(max_uv.x, vert.texture_coords.x), std::max(max_uv.y, vert.texture_coords.y)};
     }
 
     LOG(INFO) << "adding tex to atlas!";
 
     atlas.add_texture(fnv1a::hash(tex.c_str()), texture_buf, tex_sx, tex_sy, num_channels, min_uv, max_uv);
     LOG(INFO) << "addeded tex to atlas!";
-
     LOG(INFO) << "num channels: " << num_channels;
   }
 

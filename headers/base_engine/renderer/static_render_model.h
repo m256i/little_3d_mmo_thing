@@ -165,8 +165,6 @@ struct static_render_model_lod
   u0
   draw(auto &camera)
   {
-
-    puts("drawing");
     view = camera.get_view_matrix();
     pipeline.draw_function();
 
