@@ -1,7 +1,9 @@
 #pragma once
 
+#include <cmath>
 #include <common.h>
 #include <glm/glm.hpp>
+#include <limits>
 
 namespace renderer::lighting::static_lighting
 {
@@ -46,6 +48,39 @@ struct static_lighting_t
     return (_tri.a + ((_tri.c - _tri.a) - (_tri.c - _tri.b) * _uv.y) * _uv.x);
   }
 
+  inline glm::vec3
+  barycentric(const glm::vec2& P, const glm::vec2& A, const glm::vec2& B, const glm::vec2& C)
+  {
+    glm::vec2 v0 = B - A;
+    glm::vec2 v1 = C - A;
+    glm::vec2 v2 = P - A;
+
+    float d00 = glm::dot(v0, v0);
+    float d01 = glm::dot(v0, v1);
+    float d11 = glm::dot(v1, v1);
+    float d20 = glm::dot(v2, v0);
+    float d21 = glm::dot(v2, v1);
+
+    float denom = d00 * d11 - d01 * d01;
+    float v     = (d11 * d20 - d01 * d21) / denom;
+    float w     = (d00 * d21 - d01 * d20) / denom;
+    float u     = 1.0f - v - w;
+
+    return glm::vec3(u, v, w);
+  }
+
+  inline glm::vec2
+  tritrimap(const glm::vec2& P, const glm::vec2& A, const glm::vec2& B, const glm::vec2& C, const glm::vec2& A1, const glm::vec2& B1,
+            const glm::vec2& C1)
+  {
+    glm::vec3 bary = barycentric(P, A, B, C);
+    if (bary.x > 1 || bary.y > 1 || bary.z > 1)
+    {
+      return {std::numeric_limits<f32>::quiet_NaN(), std::numeric_limits<f32>::quiet_NaN()};
+    }
+    return bary.x * A1 + bary.y * B1 + bary.z * C1;
+  }
+
   tri_shade_t
   shade_triangle(const triangle& _tri)
   {
@@ -57,7 +92,12 @@ struct static_lighting_t
     out.tex_w = tex_w;
     out.tex_h = tex_h;
 
-    static auto texture_at = [&](usize x, usize y) -> u32& { return (out.pixel_data[x * tex_w + y]); };
+    static auto texture_at = [&](usize x, usize y) -> u32&
+    {
+      // map 3d input triangle coord to texture tri
+      glm::vec2 pixel_coord = tritrimap(glm::vec2{x, y}, {0, 0}, {0, 1}, {1, 0}, {0, 0}, {0, 1}, {1, 0});
+      return (out.pixel_data[x * pixel_coord.x * tex_w + y * pixel_coord.y]);
+    };
 
     out.uvC = glm::vec2(0, 0);
     out.uvB = glm::vec2(0, 1);
@@ -93,7 +133,9 @@ struct static_lighting_t
       {
         auto& current_pixel = texture_at(texX, texY);
         glm::vec2 tex_uv((f32)texX / (f32)tex_w, (f32)texY / (f32)tex_h);
+
         const auto vertex_coord = trimap(_tri, tex_uv); // map texture pixel to point on triangle
+
         glm::vec4 color_accum{};
 
         /*
