@@ -69,16 +69,38 @@ struct static_lighting_t
     return glm::vec3(u, v, w);
   }
 
-  inline glm::vec2
-  tritrimap(const glm::vec2& P, const glm::vec2& A, const glm::vec2& B, const glm::vec2& C, const glm::vec2& A1, const glm::vec2& B1,
-            const glm::vec2& C1)
+  inline glm::vec3
+  tritrimap(const glm::vec2& P, const glm::vec2& A, const glm::vec2& B, const glm::vec2& C, const glm::vec3& A1, const glm::vec3& B1,
+            const glm::vec3& C1)
   {
+    // Get barycentric coordinates for the 2D point P in the UV triangle
     glm::vec3 bary = barycentric(P, A, B, C);
-    if (bary.x > 1 || bary.y > 1 || bary.z > 1)
+
+    if (bary.x < 0.0 || bary.y < 0.0 || bary.z < 0.0)
     {
-      return {std::numeric_limits<f32>::quiet_NaN(), std::numeric_limits<f32>::quiet_NaN()};
+      return glm::vec3{std::numeric_limits<f32>::signaling_NaN()};
     }
+
+    if (bary.y + bary.z > 1.0)
+    {
+      return glm::vec3{std::numeric_limits<f32>::signaling_NaN()};
+    }
+
     return bary.x * A1 + bary.y * B1 + bary.z * C1;
+  }
+
+  inline glm::vec3
+  calculate_normal(const glm::vec3& A, const glm::vec3& B, const glm::vec3& C)
+  {
+    // Calculate the two edge vectors
+    glm::vec3 edge1 = B - A;
+    glm::vec3 edge2 = C - A;
+
+    // Compute the cross product of the two edges
+    glm::vec3 normal = glm::cross(edge1, edge2);
+
+    // Normalize the resulting vector to make it a unit normal
+    return glm::normalize(normal);
   }
 
   tri_shade_t
@@ -92,20 +114,13 @@ struct static_lighting_t
     out.tex_w = tex_w;
     out.tex_h = tex_h;
 
-    static auto texture_at = [&](usize x, usize y) -> u32&
-    {
-      // map 3d input triangle coord to texture tri
-      glm::vec2 pixel_coord = tritrimap(glm::vec2{x, y}, {0, 0}, {0, 1}, {1, 0}, {0, 0}, {0, 1}, {1, 0});
-      return (out.pixel_data[x * pixel_coord.x * tex_w + y * pixel_coord.y]);
-    };
+    static auto texture_at = [&](usize x, usize y) -> u32& { return (out.pixel_data[y * tex_w + (tex_h - x - 1)]); };
 
-    out.uvC = glm::vec2(0, 0);
-    out.uvB = glm::vec2(0, 1);
-    out.uvA = glm::vec2(1, 0);
+    out.uvA = glm::vec2(1, 1);
+    out.uvB = glm::vec2(1, 0);
+    out.uvC = glm::vec2(0, 1);
 
-    const auto& tri_norm = _tri.normal;
-
-    puts("asdasd");
+    const auto& tri_norm = glm::normalize(calculate_normal(_tri.a, _tri.b, _tri.c));
 
     /*
     we iterate over every pixel of the texture and find the corresponding UV point of the triangle
@@ -123,7 +138,7 @@ struct static_lighting_t
       const u8 g = (u8)(_col.g * 255);
       const u8 b = (u8)(_col.b * 255);
       const u8 a = (u8)(_col.a * 255);
-      
+
       return (u32)((u32)(r << 24) | (u32)(g << 16) | (u32)(b << 8) | (u32)(a));
     };
 
@@ -134,9 +149,21 @@ struct static_lighting_t
         auto& current_pixel = texture_at(texX, texY);
         glm::vec2 tex_uv((f32)texX / (f32)tex_w, (f32)texY / (f32)tex_h);
 
-        const auto vertex_coord = trimap(_tri, tex_uv); // map texture pixel to point on triangle
+        auto vertex_coord = tritrimap(tex_uv, out.uvA, out.uvB, out.uvC, _tri.a, _tri.b, _tri.c); // map texture pixel to point on triangle
+
+        if (glm::any(glm::isnan(vertex_coord)))
+        {
+          continue;
+        }
+
+        vertex_coord = (_tri.a + _tri.b + _tri.c) / 3.f;
 
         glm::vec4 color_accum{};
+
+        // color_accum.r = glm::clamp(tri_norm.x, 0.f, 1.0f);
+        // color_accum.g = glm::clamp(tri_norm.y, 0.f, 1.0f);
+        // color_accum.b = glm::clamp(tri_norm.z, 0.f, 1.0f);
+        // color_accum.a = 1;
 
         /*
         accumulate every light source
@@ -146,10 +173,10 @@ struct static_lighting_t
           f32 brightness = glm::dot(glm::normalize(vertex_coord - light_source.position), tri_norm);
           brightness     = std::clamp(brightness, 0.f, 1.f);
           // LOG(INFO) << "brightness for current vert: " << brightness;
-          f32 amplitude = 1.f / (std::pow(glm::distance(vertex_coord, light_source.position), 2.5f) + FLT_EPSILON);
+          f32 amplitude = 1.f / (glm::distance(vertex_coord, light_source.position) + FLT_EPSILON);
           amplitude     = std::clamp(amplitude, 0.f, 1.f);
           // LOG(INFO) << "amplitude for current vert: " << amplitude;
-          color_accum += rgba_to_vec4(light_source.color) * brightness * amplitude * 1000.f;
+          color_accum += rgba_to_vec4(light_source.color) * amplitude * 3.f;
         }
 
         // current_pixel = vec4_to_rgba(glm::vec4(tri_norm, 1.f));

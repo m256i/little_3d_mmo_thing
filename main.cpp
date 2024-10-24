@@ -257,7 +257,7 @@ main(i32 argc, char** argv) -> i32
             // instanced_model.init_shader("../basic_model_instanced.vs", "../basic_model_instanced.fs");
 
             // TREEYes.load_from_file("../data/playe_models/D0510041.obj");
-            TREEYes.load_from_file("../data/duskwoodchapel.obj", lod::detail_level::lod_detail_full);
+            TREEYes.load_from_file("../data/duskwoodchapel.obj", lod::detail_level::lod_detail_mid);
             // TREEYes.load_from_file("../data/weapons/sword_1h_artifactfelomelorn_d_02blue.obj", lod::detail_level::lod_detail_full);
             TREEYes.update_location();
 
@@ -330,22 +330,17 @@ main(i32 argc, char** argv) -> i32
             skybox3d_model.draw(projection, view);
             glClear(GL_DEPTH_BUFFER_BIT);
 
+            if (wireframe_view)
+            {
+              glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            }
             // plane.world_position = glm::vec3{0, 0, 0};
             // plane.draw(game_renderer.display_w, game_renderer.display_h, game_renderer.game_camera, lod::detail_level::lod_detail_potato,
             //            0xffffffff);
 
             // ground.draw(projection, view, game_renderer.display_w, game_renderer.display_h, game_renderer.game_camera);
-            if (wireframe_view)
-            {
-              glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            }
 
             // instanced_grass.draw(game_renderer.game_camera);
-
-            if (wireframe_view)
-            {
-              glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-            }
 
             // TREEYes.rotation = {std::sin(glfwGetTime()) * 2, std::cos(glfwGetTime()) * 2, 0};
             // TREEYes.scale    = {(std::sin(3.14194732 + glfwGetTime()) + 1) * 0.5, (std::sin(glfwGetTime()) + 1) * 0.5,
@@ -355,6 +350,12 @@ main(i32 argc, char** argv) -> i32
             // TREEYes.update_location();
 
             TREEYes.draw(game_renderer.game_camera);
+
+            if (wireframe_view)
+            {
+              glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            }
+
             // TREEYes.translated_bbox.debug_draw_axes();
 
             // post_processor.bake(pp_pass1, renderings);

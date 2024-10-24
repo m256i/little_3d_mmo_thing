@@ -22,7 +22,8 @@ main()
 
   float dist = camera_distance;
 
-  vec2 uv = vec2(TexCoords.x, TexCoords.y);
+  vec2 uv      = vec2(TexCoords.x, TexCoords.y);
+  vec2 lightUV = vec2(LightMapTexCoords);
 
   vec3 col      = vec3(0.3, 0.1, 0.1);
   vec3 lightpos = vec3(100.0, 150.0, 0.0);
@@ -39,6 +40,6 @@ main()
   vec4 fogColor = FOG_COLOR * (1 - fog_mask);
   fogColor      = clamp(fogColor, vec4(0, 0, 0, 0), vec4(1, 1, 1, 1));
 
-  FragColor = (textColor1 + texture(texture_baked_light1, LightMapTexCoords) * 0.0002) + fogColor;
+  FragColor = (textColor1 * 0.0001 + texture(texture_baked_light1, lightUV)) + fogColor;
   // FragColor = (texture(texture_baked_light1, LightMapTexCoords)) + fogColor;
 }

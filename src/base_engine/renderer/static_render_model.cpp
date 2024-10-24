@@ -348,7 +348,7 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
   {
     auto &tex = mesh.texture_file_path;
 
-    std::string full_path = directory + tex;
+    std::string full_path = directory + "/" + tex;
 
     usize lc1 = full_path.find("\\");
     while (lc1 != std::string::npos)
@@ -424,7 +424,12 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
       glm::vec3 triB = mesh.vertices[idx2].pos;
       glm::vec3 triC = mesh.vertices[idx3].pos;
 
-      static_lighting_t::triangle tri{triA, triB, triC, mesh.vertices[idx2].normal};
+      glm::vec3 norm = mesh.vertices[idx].normal + mesh.vertices[idx2].normal + mesh.vertices[idx3].normal;
+
+      norm /= 3.f;
+      norm = glm::normalize(norm);
+
+      static_lighting_t::triangle tri{triA, triB, triC, norm};
 
       auto shade = lighting_thing.shade_triangle(tri);
 
@@ -438,8 +443,6 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
       lightUV_vertex_map[idx3].tri_index = tri_index;
 
       lightmap_textures.push_back(shade);
-      puts("add texture to atlas!");
-
       lighting_atlas.add_texture(tri_index, (u8 *)lightmap_textures.back().pixel_data.data(), lightmap_textures.back().tex_w,
                                  lightmap_textures.back().tex_h, 4);
 
@@ -477,9 +480,13 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
   {
     for (usize i = 0; i < mesh.indices.size() - 3; i += 3)
     {
-      const auto vert1 = mesh.vertices[mesh.indices[i]];
-      const auto vert2 = mesh.vertices[mesh.indices[i + 1]];
-      const auto vert3 = mesh.vertices[mesh.indices[i + 2]];
+      const auto idx1 = mesh.indices[i];
+      const auto idx2 = mesh.indices[i + 1];
+      const auto idx3 = mesh.indices[i + 2];
+
+      const auto vert1 = mesh.vertices[idx1];
+      const auto vert2 = mesh.vertices[idx2];
+      const auto vert3 = mesh.vertices[idx3];
 
       auto UV1 = atlas.get_uv_map(fnv1a::hash(mesh.texture_file_path.c_str()), vert1.texture_coords.x, vert1.texture_coords.y);
       auto UV2 = atlas.get_uv_map(fnv1a::hash(mesh.texture_file_path.c_str()), vert2.texture_coords.x, vert2.texture_coords.y);
@@ -490,13 +497,10 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
 
     for (const u32 index : mesh.indices)
     {
-      // LOG(INFO) << "for index: " << index << " triangle index: " << lightUV_vertex_map[index].tri_index
-      //           << " old uv: " << lightUV_vertex_map[index].uv.x << " " << lightUV_vertex_map[index].uv.y;
+      assert(lightUV_vertex_map.contains(index));
 
       auto new_uvs =
-          lighting_atlas.get_uv_map(lightUV_vertex_map[index].tri_index, lightUV_vertex_map[index].uv.x, lightUV_vertex_map[index].uv.y);
-
-      // LOG(INFO) << "new uvs: " << new_uvs.first << " " << new_uvs.second;
+          lighting_atlas.get_uv_map(lightUV_vertex_map.at(index).tri_index, lightUV_vertex_map[index].uv.x, lightUV_vertex_map[index].uv.y);
 
       mesh.vertices[index].light_map_texture_coords = glm::vec2{new_uvs.first, new_uvs.second};
 
@@ -504,25 +508,16 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
     }
     for (auto &vert : mesh.vertices)
     {
-
-      // LOG(INFO) << "render UV for vert: " << vert.pos.x << " " << vert.pos.y << " " << vert.pos.z << " uvs: " << vert.texture_coords.x
-      //           << " " << vert.texture_coords.y;
-
       auto uv_map = atlas.get_uv_map(fnv1a::hash(mesh.texture_file_path.c_str()), vert.texture_coords.x, vert.texture_coords.y);
       /* add the atlas index to the UV here */
-      // assert(std::fabs((1 - uv_map.first) - vert.texture_coords.x) < 0.0001);
-      // assert(std::fabs((1 - uv_map.second) - vert.texture_coords.y) < 0.0001);
 
-      vert.texture_coords.x = uv_map.first - 0.001;
+      vert.texture_coords.x = uv_map.first;
       vert.texture_coords.y = uv_map.second;
 
-      // LOG(INFO) << "new uvs: " << vert.texture_coords.x << " " << vert.texture_coords.y;
-
-      // LOG(INFO) << "vert at position: x: " << vert.pos.x << " y: " << vert.pos.y << " z: " << vert.pos.z
-      //          << "has lightmap UVs: " << vert.light_map_texture_coords.x << " " << vert.light_map_texture_coords.y;
-
       temp_verts.push_back(vert.pos);
+
       pipeline.push_back_vertex<temporary_mesh::vert>(vert);
+
       total_vertex_count++;
 
       centroid += vert.pos;
@@ -581,30 +576,22 @@ static_render_model_lod::load_from_file(std::string_view _path, lod::detail_leve
   // f32 threshold            = lod::model_detail_scales[(usize)_detail_level];
   // usize target_index_count = usize(pipeline.vbuf.indices.size() * threshold);
   // f32 target_error         = 0.15;
-
   // std::vector<u32> lod(pipeline.vbuf.indices.size());
   // f32 lod_error = 0.f;
   // lod.resize(meshopt_simplifySloppy(&lod[0], pipeline.vbuf.indices.data(), pipeline.vbuf.indices.size(),
   //                                   (f32 *)std::launder(pipeline.vbuf.raw_buffer.data()), total_vertex_count,
   //                                   pipeline.vbuf.get_total_attribute_stride(), target_index_count, target_error, &lod_error));
-
   // pipeline.vbuf.indices = lod;
-
   // std::vector<u32> optimized_indices(pipeline.vbuf.indices.size());
   // std::vector<u8> optimized_vertices(pipeline.vbuf.raw_buffer.size());
-
   // /* optimize the mesh */
   // meshopt_optimizeVertexCache(optimized_indices.data(), pipeline.vbuf.indices.data(), pipeline.vbuf.indices.size(), total_vertex_count);
-
   // std::vector<u32> optimized_indices2(optimized_indices.size());
-
   // meshopt_optimizeOverdraw(optimized_indices2.data(), optimized_indices.data(), optimized_indices.size(),
   //                          (f32 *)std::launder(pipeline.vbuf.raw_buffer.data()), total_vertex_count,
   //                          pipeline.vbuf.get_total_attribute_stride(), 1.15f);
-
   // meshopt_optimizeVertexFetch(optimized_vertices.data(), optimized_indices.data(), optimized_indices.size(),
   //                             pipeline.vbuf.raw_buffer.data(), total_vertex_count, pipeline.vbuf.get_total_attribute_stride());
-
   // pipeline.vbuf.indices    = optimized_indices;
   // pipeline.vbuf.raw_buffer = optimized_vertices;
 
